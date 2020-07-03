@@ -1,6 +1,8 @@
 package app
 
-import "github.com/aau-network-security/haaukins/store"
+import (
+	"github.com/aau-network-security/haaukins/store"
+)
 
 //Get the challenges from the store, return error if the challenges tag dosen't exist
 func (lm *LearningMaterialAPI) GetChallengesFromRequest(challenges []string) ([]store.Tag, error) {

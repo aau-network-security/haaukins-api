@@ -2,7 +2,7 @@ package app
 
 const waitingHTMLTemplate = `
 <html lang="en" dir="ltr">
-		  <meta http-equiv="refresh" content="70" />
+		  <meta http-equiv="refresh" content="10" />
 		  <head>
 			<style>
 				html, body {
@@ -115,10 +115,18 @@ Virtualized Environment
 </html>
 `
 
-const errorHTMLTemplate = `
+const badRequestHTMLTemplate = `
 <html lang="en" dir="ltr">
   <body>
 	bad request
+  </body>
+</html>
+`
+
+const errorHTMLTemplate = `
+<html lang="en" dir="ltr">
+  <body>
+	internal error
   </body>
 </html>
 `
