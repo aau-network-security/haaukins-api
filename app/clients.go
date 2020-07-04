@@ -62,7 +62,7 @@ func (c *clientRequestStore) NewClient(host string) *Client {
 		password:     id,
 		host:         host,
 		requestsMade: 0,
-		challenges:   map[string]ClientChallenge{},
+		challenges:   map[string]*ClientChallenge{},
 	}
 
 	c.clientsR[id] = cl
@@ -75,24 +75,43 @@ type Client struct {
 	password     string
 	host         string
 	requestsMade int
-	challenges   map[string]ClientChallenge
+	challenges   map[string]*ClientChallenge
 }
 
 type ClientChallenge struct {
 	isReady    bool
+	err        chan error
 	guacCookie string
-	guacPort   string
+	guacPort   uint
 }
 
-func (c *Client) GetChallenge(chals string) (ClientChallenge, error) {
+func (c *Client) GetChallenge(chals string) (*ClientChallenge, error) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
 	cc, ok := c.challenges[chals]
 	if !ok {
-		return ClientChallenge{}, ErrChallengeNotFound
+		return nil, ErrChallengeNotFound
 	}
 	return cc, nil
+}
+
+func (c *Client) CreateChallenge(chals string) *ClientChallenge {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	cc := &ClientChallenge{
+		isReady: false,
+		err:     make(chan error, 0),
+	}
+
+	c.challenges[chals] = cc
+
+	return cc
+}
+
+func (cc *ClientChallenge) NewError(e error) {
+	cc.err <- e
 }
 
 func (c *Client) CreateToken(key string) (string, error) {

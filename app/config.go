@@ -3,6 +3,7 @@ package app
 import (
 	"io/ioutil"
 
+	"github.com/aau-network-security/haaukins/virtual/docker"
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v2"
 )
@@ -46,6 +47,11 @@ func NewConfigFromFile(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for _, repo := range c.DockerRepositories {
+		docker.Registries[repo.ServerAddress] = repo
+	}
+
 	//todo manage the error in the config file
 	return &c, nil
 }

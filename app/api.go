@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
-
-	"github.com/rs/zerolog/log"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -18,8 +16,7 @@ const (
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m := mux.NewRouter()
-	final := http.HandlerFunc(final)
-	m.HandleFunc("/api/{chals}", lm.request(lm.getOrCreateClient(lm.getOrCreateChallenge(final))))
+	m.HandleFunc("/api/{chals}", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
 	return m
 }
 
@@ -27,9 +24,7 @@ func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		challengesFromLink := mux.Vars(r)["chals"]
-		challenges := strings.Split(challengesFromLink, ",")
-		chals, err := lm.GetChallengesFromRequest(challenges)
+		chals, err := lm.GetChallengesFromRequest(mux.Vars(r)["chals"])
 
 		//Bad request (challenge tags don't exist)
 		if err != nil {
@@ -48,83 +43,95 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := r.Cookie(sessionCookie)
 
-		//Cookie dosent exists so the client is new
+		//Error getting the cookie --> Client is new --> Create Env
 		if err != nil {
 
 			client := lm.ClientRequestStore.NewClient(r.Host)
+			log.Info().Msgf("Create new Client [%s]", client.username)
+
 			token, err := client.CreateToken(lm.conf.API.SignKey)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				_, _ = w.Write([]byte(errorHTMLTemplate))
+				ErrorResponse(w)
 				return
 			}
-			//AAAAAAAAAAAA
-			err = lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
+			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
 
 			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token})
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(waitingHTMLTemplate))
+			WaitingResponse(w)
 			return
 		}
 
-		//Cookie exists so check if the requested challenge is [ new | loading | exists ]
+		//got the cookie --> Client exists --> Get or Create Env
 		next.ServeHTTP(w, r)
 	}
 }
 
-func (lm *LearningMaterialAPI) getOrCreateChallenge(next http.Handler) http.HandlerFunc {
+func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		chals := mux.Vars(r)["chals"]
 		cookie, _ := r.Cookie(sessionCookie)
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
-		if err != nil {
-			fmt.Println(err)
+		if err != nil { //Error getting the client ID from cookie
+			ErrorResponse(w)
 			return
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
-		if err != nil {
-			//handle error pls
-			fmt.Println(err)
+		if err != nil { //Error getting Client
+			ErrorResponse(w)
 			return
 		}
 		cc, err := client.GetChallenge(chals)
 
-		// create a new challenge for that client
+		//Create a new challenge
 		if err != nil {
-			err = lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
+			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
+			return
 		}
 
-		fmt.Println(cc.isReady)
-		_, _ = w.Write([]byte("aadadad"))
+		//Check for error while creating the environment
+		select {
+		case err = <-cc.err:
+			ErrorResponse(w)
+			return
+		default:
+		}
 
+		if !cc.isReady {
+			log.Info().Msgf("[NOT READY] Environment [%s] for the client [%s]", chals, client.username)
+			WaitingResponse(w)
+			return
+		}
+
+		log.Info().Msgf("[READY] Environment [%s] for the client [%s]", chals, client.username)
+
+		authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
+		http.SetCookie(w, &authC)
+		host := fmt.Sprintf("http://localhost:%d/guacamole", cc.guacPort)
+		http.Redirect(w, r, host, http.StatusFound)
 	}
 }
 
-func (lm *LearningMaterialAPI) CreateChallengeEnv(client *Client, chals string) error {
-	client.m.Lock()
-	defer client.m.Unlock()
+func (lm *LearningMaterialAPI) CreateChallengeEnv(client *Client, chals string) {
 
-	log.Info().Msgf("Create new Environment [%s] for the client [%s]", chals, client.username)
+	log.Info().Msgf("Creating new Environment [%s] for the client [%s]", chals, client.username)
 
-	cc := ClientChallenge{
-		isReady:    false,
-		guacCookie: "",
-		guacPort:   "",
+	cc := client.CreateChallenge(chals)
+
+	chalsTag, _ := lm.GetChallengesFromRequest(chals)
+
+	env, err := lm.newEnvironment(chalsTag)
+	if err != nil {
+		go cc.NewError(err)
+		return
 	}
-	client.challenges[chals] = cc
 
-	//waiting page again and put the function in the chain middleware
+	err = env.Assign(client, chals)
+	if err != nil {
+		go cc.NewError(err)
+		return
+	}
 
-	return nil
-}
-
-func final(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context().Value(requestChallenges)
-	//chals := r.Context().Value(requestChallenges).([]store.Tag)
-
-	fmt.Println(ctx)
-	w.Write([]byte("OK"))
+	client.requestsMade += 1
 }
