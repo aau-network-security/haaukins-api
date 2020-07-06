@@ -2,10 +2,8 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 )
 
@@ -18,35 +16,35 @@ var (
 )
 
 type ClientRequestStore interface {
-	NewClient(string) *Client
-	GetClient(string) (*Client, error)
+	NewClient(string) Client
+	GetClient(string) (Client, error)
 }
 
 type clientRequestStore struct {
 	m        sync.RWMutex
-	clientsR map[string]*Client //map with the client ip
+	clientsR map[string]*client //map with the client ip
 }
 
 func NewClientRequestStore() ClientRequestStore {
 	crs := &clientRequestStore{
-		clientsR: map[string]*Client{},
+		clientsR: map[string]*client{},
 	}
 	return crs
 }
 
-func (c *clientRequestStore) GetClient(id string) (*Client, error) {
+func (c *clientRequestStore) GetClient(id string) (Client, error) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
 	client, ok := c.clientsR[id]
 	if !ok {
-		return &Client{}, UnknownIDErr
+		return nil, UnknownIDErr
 	}
 	return client, nil
 
 }
 
-func (c *clientRequestStore) NewClient(host string) *Client {
+func (c *clientRequestStore) NewClient(host string) Client {
 	c.m.Lock()
 	defer c.m.Unlock()
 
@@ -57,9 +55,8 @@ func (c *clientRequestStore) NewClient(host string) *Client {
 		id = uuid.New().String()
 	}
 
-	cl := &Client{
-		username:     id,
-		password:     id,
+	cl := &client{
+		id:           id,
 		host:         host,
 		requestsMade: 0,
 		challenges:   map[string]*ClientChallenge{},
@@ -69,23 +66,24 @@ func (c *clientRequestStore) NewClient(host string) *Client {
 	return cl
 }
 
-type Client struct {
+type Client interface {
+	GetChallenge(string) (*ClientChallenge, error)
+	NewClientChallenge(string) *ClientChallenge
+	CreateToken(key string) (string, error)
+	ID() string
+	RequestMade() int
+	AddRequest()
+}
+
+type client struct {
 	m            sync.RWMutex
-	username     string
-	password     string
+	id           string
 	host         string
 	requestsMade int
 	challenges   map[string]*ClientChallenge
 }
 
-type ClientChallenge struct {
-	isReady    bool
-	err        chan error
-	guacCookie string
-	guacPort   uint
-}
-
-func (c *Client) GetChallenge(chals string) (*ClientChallenge, error) {
+func (c *client) GetChallenge(chals string) (*ClientChallenge, error) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
@@ -96,7 +94,7 @@ func (c *Client) GetChallenge(chals string) (*ClientChallenge, error) {
 	return cc, nil
 }
 
-func (c *Client) CreateChallenge(chals string) *ClientChallenge {
+func (c *client) NewClientChallenge(chals string) *ClientChallenge {
 	c.m.Lock()
 	defer c.m.Unlock()
 
@@ -110,40 +108,32 @@ func (c *Client) CreateChallenge(chals string) *ClientChallenge {
 	return cc
 }
 
+type ClientChallenge struct {
+	isReady    bool
+	err        chan error
+	guacCookie string
+	guacPort   uint
+}
+
 func (cc *ClientChallenge) NewError(e error) {
 	cc.err <- e
 }
 
-func (c *Client) CreateToken(key string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		JWT_CLIENT_ID: c.username,
-	})
-	tokenStr, err := token.SignedString([]byte(key))
-	if err != nil {
-		return "", err
-	}
-	return tokenStr, nil
+func (c *client) ID() string {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	return c.id
 }
 
-func GetTokenFromCookie(token, key string) (string, error) {
-	jwtToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(key), nil
-	})
-	if err != nil {
-		return "", err
-	}
+func (c *client) RequestMade() int {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	return c.requestsMade
+}
 
-	claims, ok := jwtToken.Claims.(jwt.MapClaims)
-	if !ok || !jwtToken.Valid {
-		return "", ErrInvalidTokenFormat
-	}
-
-	id, ok := claims[JWT_CLIENT_ID].(string)
-	if !ok {
-		return "", ErrInvalidTokenFormat
-	}
-	return id, nil
+func (c *client) AddRequest() {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.requestsMade += 1
+	return
 }

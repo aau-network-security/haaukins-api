@@ -30,7 +30,7 @@ type CertificateConfig struct {
 
 type APIConfig struct {
 	SignKey    string `yaml:"sign-key"`
-	MaxRequest uint   `yaml:"max-requests"`
+	MaxRequest int    `yaml:"max-requests"`
 	FrontEnd   struct {
 		Image  string `yaml:"image"`
 		Memory uint   `yaml:"memory"`

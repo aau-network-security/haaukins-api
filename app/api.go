@@ -47,7 +47,7 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 		if err != nil {
 
 			client := lm.ClientRequestStore.NewClient(r.Host)
-			log.Info().Msgf("Create new Client [%s]", client.username)
+			log.Info().Msgf("Create new Client [%s]", client.ID())
 
 			token, err := client.CreateToken(lm.conf.API.SignKey)
 			if err != nil {
@@ -86,6 +86,10 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 		//Create a new challenge
 		if err != nil {
+			if client.RequestMade() >= lm.conf.API.MaxRequest {
+				ErrorResponse(w) //todo create maxrequest error page
+				return
+			}
 			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
 			return
 		}
@@ -99,25 +103,25 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 		}
 
 		if !cc.isReady {
-			log.Info().Msgf("[NOT READY] Environment [%s] for the client [%s]", chals, client.username)
+			log.Info().Msgf("[NOT READY] Environment [%s] for the client [%s]", chals, client.ID())
 			WaitingResponse(w)
 			return
 		}
 
-		log.Info().Msgf("[READY] Environment [%s] for the client [%s]", chals, client.username)
+		log.Info().Msgf("[READY] Environment [%s] for the client [%s]", chals, client.ID())
 
 		authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
 		http.SetCookie(w, &authC)
-		host := fmt.Sprintf("http://localhost:%d/guacamole", cc.guacPort)
+		host := fmt.Sprintf("http://%s:%d/guacamole", lm.conf.Host, cc.guacPort)
 		http.Redirect(w, r, host, http.StatusFound)
 	}
 }
 
-func (lm *LearningMaterialAPI) CreateChallengeEnv(client *Client, chals string) {
+func (lm *LearningMaterialAPI) CreateChallengeEnv(client Client, chals string) {
 
-	log.Info().Msgf("Creating new Environment [%s] for the client [%s]", chals, client.username)
+	log.Info().Msgf("Creating new Environment [%s] for the client [%s]", chals, client.ID())
 
-	cc := client.CreateChallenge(chals)
+	cc := client.NewClientChallenge(chals)
 
 	chalsTag, _ := lm.GetChallengesFromRequest(chals)
 
@@ -133,5 +137,5 @@ func (lm *LearningMaterialAPI) CreateChallengeEnv(client *Client, chals string) 
 		return
 	}
 
-	client.requestsMade += 1
+	client.AddRequest()
 }

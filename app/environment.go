@@ -27,7 +27,7 @@ func (e environment) Close() error {
 }
 
 type Environment interface {
-	Assign(*Client, string) error
+	Assign(Client, string) error
 	Close() error //close the dockers and the vms
 }
 
@@ -78,10 +78,9 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environme
 	return env, nil
 }
 
-func (e environment) Assign(client *Client, chals string) error {
-	client.m.Lock()
-	defer client.m.Unlock()
+func (e environment) Assign(client Client, chals string) error {
 
+	clientID := client.ID()
 	rdpPorts := e.lab.RdpConnPorts()
 	if n := len(rdpPorts); n == 0 {
 		log.
@@ -93,8 +92,8 @@ func (e environment) Assign(client *Client, chals string) error {
 	}
 
 	u := guacamole.GuacUser{
-		Username: client.username,
-		Password: client.password,
+		Username: clientID,
+		Password: clientID,
 	}
 
 	if err := e.guacamole.CreateUser(u.Username, u.Password); err != nil {
@@ -113,9 +112,9 @@ func (e environment) Assign(client *Client, chals string) error {
 
 	for i, port := range rdpPorts {
 		num := i + 1
-		name := fmt.Sprintf("%s-client%d", client.username, num)
+		name := fmt.Sprintf("%s-client%d", clientID, num)
 
-		log.Debug().Str("client", client.username).Uint("port", port).Msg("Creating RDP Connection for group")
+		log.Debug().Str("client", clientID).Uint("port", port).Msg("Creating RDP Connection for group")
 		if err := e.guacamole.CreateRDPConn(guacamole.CreateRDPConnOpts{
 			Host:     hostIp,
 			Port:     port,
@@ -128,7 +127,7 @@ func (e environment) Assign(client *Client, chals string) error {
 		}
 	}
 
-	content, err := e.guacamole.RawLogin(client.username, client.password)
+	content, err := e.guacamole.RawLogin(clientID, clientID)
 	if err != nil {
 		log.
 			Debug().
@@ -138,9 +137,8 @@ func (e environment) Assign(client *Client, chals string) error {
 	}
 	cookie := url.QueryEscape(string(content))
 
-	//map the cookie and the guacamole port with the challenges the user requested
-	cc, ok := client.challenges[chals]
-	if !ok {
+	cc, err := client.GetChallenge(chals)
+	if err != nil {
 		return errors.New("challenge not found")
 	}
 	cc.guacPort = e.guacPort

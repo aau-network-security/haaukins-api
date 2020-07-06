@@ -115,6 +115,7 @@ Virtualized Environment
 </html>
 `
 
+//todo change the templates
 const badRequestHTMLTemplate = `
 <html lang="en" dir="ltr">
   <body>
