@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -17,6 +18,8 @@ const (
 func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m := mux.NewRouter()
 	m.HandleFunc("/api/{chals}", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
+	m.HandleFunc("/admin/clients", lm.listClients())
+	m.HandleFunc("/admin/envs", lm.listEnvs())
 	return m
 }
 
@@ -119,13 +122,14 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 func (lm *LearningMaterialAPI) CreateChallengeEnv(client Client, chals string) {
 
-	log.Info().Msgf("Creating new Environment [%s] for the client [%s]", chals, client.ID())
+	envID := GetEnvID(client.ID(), chals)
+	log.Info().Msgf("Creating new Environment [%s]", envID)
 
 	cc := client.NewClientChallenge(chals)
 
 	chalsTag, _ := lm.GetChallengesFromRequest(chals)
 
-	env, err := lm.newEnvironment(chalsTag)
+	env, err := lm.newEnvironment(chalsTag, envID)
 	if err != nil {
 		go cc.NewError(err)
 		return
@@ -137,5 +141,33 @@ func (lm *LearningMaterialAPI) CreateChallengeEnv(client Client, chals string) {
 		return
 	}
 
+	lm.rcpool.AddRequestChallenge(env)
 	client.AddRequest()
+}
+
+func (lm *LearningMaterialAPI) listClients() http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("list of clients"))
+	}
+}
+
+func (lm *LearningMaterialAPI) listEnvs() http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		envs := lm.rcpool.GetALLRequestsChallenge()
+		envsID := make([]string, len(envs))
+		var i int
+		for _, e := range envs {
+			envsID[i] = e.ID()
+			i++
+		}
+
+		w.WriteHeader(200)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(strings.Join(envsID, "\n")))
+	}
 }

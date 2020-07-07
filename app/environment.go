@@ -15,6 +15,7 @@ import (
 )
 
 type environment struct {
+	id         string
 	timer      *time.Time
 	challenges []store.Tag
 	lab        hlab.Lab
@@ -22,16 +23,13 @@ type environment struct {
 	guacPort   uint
 }
 
-func (e environment) Close() error {
-	panic("implement me")
-}
-
 type Environment interface {
+	ID() string
 	Assign(Client, string) error
 	Close() error //close the dockers and the vms
 }
 
-func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environment, error) {
+func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag, envID string) (Environment, error) {
 
 	ctx := context.Background()
 	exercises, _ := lm.exStore.GetExercisesByTags(challenges...)
@@ -49,18 +47,18 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environme
 	guac, err := guacamole.New(ctx, guacamole.Config{})
 	if err != nil {
 		log.Error().Msgf("Error while creating new guacamole %s", err.Error())
-		return environment{}, err
+		return nil, err
 	}
 
 	if err := guac.Start(ctx); err != nil {
 		log.Error().Msgf("Error while starting guacamole %s", err.Error())
-		return environment{}, err
+		return nil, err
 	}
 
 	lab, err := lh.NewLab(ctx)
 	if err != nil {
 		log.Error().Msgf("Error while creating new lab %s", err.Error())
-		return environment{}, err
+		return nil, err
 	}
 
 	if err := lab.Start(ctx); err != nil {
@@ -68,6 +66,7 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environme
 	}
 
 	env := &environment{
+		id:         envID,
 		timer:      nil, //todo implement the timer
 		challenges: challenges,
 		lab:        lab,
@@ -78,7 +77,7 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environme
 	return env, nil
 }
 
-func (e environment) Assign(client Client, chals string) error {
+func (e *environment) Assign(client Client, chals string) error {
 
 	clientID := client.ID()
 	rdpPorts := e.lab.RdpConnPorts()
@@ -146,4 +145,15 @@ func (e environment) Assign(client Client, chals string) error {
 	cc.isReady = true
 
 	return nil
+}
+
+func (e *environment) ID() string {
+	return e.id
+}
+
+func (e *environment) Close() error {
+	err := e.lab.Close()
+	err = e.guacamole.Close()
+
+	return err
 }

@@ -2,13 +2,40 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
+
+	"github.com/aau-network-security/haaukins/virtual/docker"
 
 	"github.com/dgrijalva/jwt-go"
 
 	"github.com/aau-network-security/haaukins/store"
 )
+
+func (lm *LearningMaterialAPI) Close() error {
+	var errs error
+	var wg sync.WaitGroup
+
+	for _, c := range lm.closers {
+		wg.Add(1)
+		go func(c io.Closer) {
+			if err := c.Close(); err != nil && errs == nil {
+				errs = err
+			}
+			wg.Done()
+		}(c)
+	}
+
+	wg.Wait()
+
+	if err := docker.DefaultLinkBridge.Close(); err != nil {
+		return err
+	}
+
+	return errs
+}
 
 //Get the challenges from the store, return error if the challenges tag dosen't exist
 func (lm *LearningMaterialAPI) GetChallengesFromRequest(challengesR string) ([]store.Tag, error) {
@@ -58,6 +85,10 @@ func GetTokenFromCookie(token, key string) (string, error) {
 		return "", ErrInvalidTokenFormat
 	}
 	return id, nil
+}
+
+func GetEnvID(clientID, chals string) string {
+	return fmt.Sprintf("%s---%s", clientID, chals)
 }
 
 func ErrorResponse(w http.ResponseWriter) {

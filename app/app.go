@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/rs/zerolog/log"
@@ -16,6 +17,8 @@ type LearningMaterialAPI struct {
 	exStore  store.ExerciseStore
 	vlib     vbox.Library
 	frontend []store.InstanceConfig
+	rcpool   *requestChallengePool
+	closers  []io.Closer
 }
 
 func New(conf *Config) (*LearningMaterialAPI, error) {
@@ -30,12 +33,15 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 		return nil, err
 	}
 	crs := NewClientRequestStore()
+	rcp := NewRequestChallengePool(conf.Host)
 	return &LearningMaterialAPI{
 		conf:               conf,
 		ClientRequestStore: crs,
 		exStore:            ef,
 		vlib:               vlib,
 		frontend:           frontends,
+		rcpool:             rcp,
+		closers:            []io.Closer{rcp},
 	}, nil
 }
 

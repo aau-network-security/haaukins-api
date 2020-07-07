@@ -42,15 +42,18 @@ func main() {
 		log.Error().Msgf("unable to read configuration file \"%s\": %s\n", *confFilePtr, err)
 		return
 	}
-	handleCancel(func() error {
-		return nil //todo configure the shut down gracefully
-	})
 
 	api, err := app.New(c)
 	if err != nil {
 		log.Error().Msgf("unable to create API: %s\n", err)
 		return
 	}
+
+	handleCancel(func() error {
+		return api.Close()
+	})
+
+	log.Info().Msg("Started API")
 
 	api.Run()
 
