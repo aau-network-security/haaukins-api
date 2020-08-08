@@ -8,6 +8,8 @@ require (
 	github.com/fsouza/go-dockerclient v1.6.5
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
+	github.com/gorilla/websocket v1.4.1
+	github.com/koding/websocketproxy v0.0.0-20181220232114-7ed82d81a28c // indirect
 	github.com/rs/zerolog v1.19.0
 	gopkg.in/yaml.v2 v2.3.0
 )

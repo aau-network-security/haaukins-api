@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/gorilla/mux"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/aau-network-security/haaukins/store"
@@ -19,6 +21,7 @@ type LearningMaterialAPI struct {
 	frontend []store.InstanceConfig
 	rcpool   *requestChallengePool
 	closers  []io.Closer
+	m        *mux.Router
 }
 
 func New(conf *Config) (*LearningMaterialAPI, error) {

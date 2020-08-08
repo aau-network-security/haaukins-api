@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -20,6 +19,7 @@ func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m.HandleFunc("/api/{chals}", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
 	m.HandleFunc("/admin/clients", lm.listClients())
 	m.HandleFunc("/admin/envs", lm.listEnvs())
+	lm.m = m
 	return m
 }
 
@@ -59,7 +59,7 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 			}
 			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
 
-			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token})
+			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token, Path: "/"})
 			WaitingResponse(w)
 			return
 		}
@@ -75,6 +75,7 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 		chals := mux.Vars(r)["chals"]
 		cookie, _ := r.Cookie(sessionCookie)
+		//todo merge the function GetTokenFromCookie lm.ClientRequestStore.GetClient(clientID)
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
 		if err != nil { //Error getting the client ID from cookie
 			ErrorResponse(w)
@@ -113,13 +114,24 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 		log.Info().Msgf("[READY] Environment [%s] for the client [%s]", chals, client.ID())
 
-		authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
-		http.SetCookie(w, &authC)
-		host := fmt.Sprintf("http://%s:%d/guacamole", lm.conf.Host, cc.guacPort)
-		http.Redirect(w, r, host, http.StatusFound)
+		//authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
+		//http.SetCookie(w, &authC)
+		//host := fmt.Sprintf("http://%s:%d/guacamole", lm.conf.Host, cc.guacPort)
+
+		env, err := lm.rcpool.GetRequestChallenge(GetEnvID(client.ID(), chals))
+		if err != nil {
+			//todo manage it
+			log.Info().Msg("AAAAAAAAAAAAAAAAAA ERROR getting env")
+			WaitingResponse(w)
+			return
+		}
+		lm.m.Handle("/guaclogin", lm.ProxyHandler()(env))
+		lm.m.Handle("/guacamole", lm.ProxyHandler()(env))
+		lm.m.Handle("/guacamole/", lm.ProxyHandler()(env))
+
+		http.Redirect(w, r, "/guaclogin", http.StatusFound)
 	}
 }
-
 func (lm *LearningMaterialAPI) CreateChallengeEnv(client Client, chals string) {
 
 	envID := GetEnvID(client.ID(), chals)

@@ -27,6 +27,8 @@ type Environment interface {
 	ID() string
 	Assign(Client, string) error
 	Close() error //close the dockers and the vms
+	GetGuacPort() uint
+	GetGuacamole() guacamole.Guacamole
 }
 
 func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag, envID string) (Environment, error) {
@@ -149,6 +151,14 @@ func (e *environment) Assign(client Client, chals string) error {
 
 func (e *environment) ID() string {
 	return e.id
+}
+
+func (e *environment) GetGuacPort() uint {
+	return e.guacPort
+}
+
+func (e *environment) GetGuacamole() guacamole.Guacamole {
+	return e.guacamole
 }
 
 func (e *environment) Close() error {
