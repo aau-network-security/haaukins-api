@@ -5,8 +5,6 @@ import (
 	"net/http"
 )
 
-type ProxyConnector func(Environment) http.Handler
-
 type Interception interface {
 	ValidRequest(r *http.Request) bool
 	Intercept(http.Handler) http.Handler

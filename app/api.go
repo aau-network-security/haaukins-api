@@ -5,18 +5,19 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
 
 const (
 	requestChallenges = "chals"
 	sessionCookie     = "haaukins_session"
+	chals             = "ftp"
 )
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
-	m := mux.NewRouter()
-	m.HandleFunc("/api/{chals}", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
+	m := http.NewServeMux()
+	//m.HandleFunc("/api/{chals}", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
+	m.HandleFunc("/api/", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
 	m.HandleFunc("/admin/clients", lm.listClients())
 	m.HandleFunc("/admin/envs", lm.listEnvs())
 	lm.m = m
@@ -27,15 +28,15 @@ func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		chals, err := lm.GetChallengesFromRequest(mux.Vars(r)["chals"])
-
-		//Bad request (challenge tags don't exist)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(badRequestHTMLTemplate))
-			return
-		}
+		//chals, err := lm.GetChallengesFromRequest(mux.Vars(r)["chals"])
+		//
+		////Bad request (challenge tags don't exist)
+		//if err != nil {
+		//	w.WriteHeader(http.StatusBadRequest)
+		//	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		//	_, _ = w.Write([]byte(badRequestHTMLTemplate))
+		//	return
+		//}
 
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestChallenges, chals)))
 	}
@@ -57,7 +58,7 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 				ErrorResponse(w)
 				return
 			}
-			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
+			go lm.CreateChallengeEnv(client, chals)
 
 			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token, Path: "/"})
 			WaitingResponse(w)
@@ -73,7 +74,7 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		chals := mux.Vars(r)["chals"]
+		chals := chals
 		cookie, _ := r.Cookie(sessionCookie)
 		//todo merge the function GetTokenFromCookie lm.ClientRequestStore.GetClient(clientID)
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
@@ -94,7 +95,7 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 				ErrorResponse(w) //todo create maxrequest error page
 				return
 			}
-			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
+			go lm.CreateChallengeEnv(client, chals)
 			return
 		}
 
@@ -114,8 +115,8 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 		log.Info().Msgf("[READY] Environment [%s] for the client [%s]", chals, client.ID())
 
-		//authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
-		//http.SetCookie(w, &authC)
+		authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
+		http.SetCookie(w, &authC)
 		//host := fmt.Sprintf("http://%s:%d/guacamole", lm.conf.Host, cc.guacPort)
 
 		env, err := lm.rcpool.GetRequestChallenge(GetEnvID(client.ID(), chals))
@@ -125,11 +126,9 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 			WaitingResponse(w)
 			return
 		}
-		lm.m.Handle("/guaclogin", lm.ProxyHandler()(env))
-		lm.m.Handle("/guacamole", lm.ProxyHandler()(env))
-		lm.m.Handle("/guacamole/", lm.ProxyHandler()(env))
 
-		http.Redirect(w, r, "/guaclogin", http.StatusFound)
+		lm.m.Handle("/guacamole/", lm.ProxyHandler()(env))
+		http.Redirect(w, r, "/guacamole/", http.StatusFound)
 	}
 }
 func (lm *LearningMaterialAPI) CreateChallengeEnv(client Client, chals string) {
