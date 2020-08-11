@@ -38,9 +38,9 @@ func (lm *LearningMaterialAPI) Close() error {
 }
 
 //Get the challenges from the store, return error if the challenges tag dosen't exist
-func (lm *LearningMaterialAPI) GetChallengesFromRequest(challengesR string) ([]store.Tag, error) {
+func (lm *LearningMaterialAPI) GetChallengesFromRequest(requestedChallenges string) ([]store.Tag, error) {
 
-	challenges := strings.Split(challengesR, ",")
+	challenges := strings.Split(requestedChallenges, ",")
 	tags := make([]store.Tag, len(challenges))
 	for i, s := range challenges {
 		t := store.Tag(s)

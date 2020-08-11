@@ -1,25 +1,24 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	requestChallenges = "chals"
-	sessionCookie     = "haaukins_session"
+	requestedChallenges = "challenges"
+	sessionCookie       = "haaukins_session"
 )
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
-	m := mux.NewRouter()
-	m.HandleFunc("/api/{chals}", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
+	m := http.NewServeMux()
+	m.HandleFunc("/api/", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
 	m.HandleFunc("/admin/clients", lm.listClients())
 	m.HandleFunc("/admin/envs", lm.listEnvs())
+	m.HandleFunc("/guacamole/", lm.proxyHandler())
 	return m
 }
 
@@ -27,9 +26,12 @@ func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		chals, err := lm.GetChallengesFromRequest(mux.Vars(r)["chals"])
+		// No need to sanitize the url requested
+		//https://stackoverflow.com/questions/23285364/does-go-sanitize-urls-for-web-requests
 
-		//Bad request (challenge tags don't exist)
+		_, err := lm.GetChallengesFromRequest(r.URL.Query().Get(requestedChallenges))
+
+		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -37,7 +39,7 @@ func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 			return
 		}
 
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestChallenges, chals)))
+		next.ServeHTTP(w, r)
 	}
 }
 
@@ -57,9 +59,9 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 				ErrorResponse(w)
 				return
 			}
-			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
+			go lm.CreateChallengeEnv(client, r.URL.Query().Get(requestedChallenges))
 
-			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token})
+			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token, Path: "/"})
 			WaitingResponse(w)
 			return
 		}
@@ -73,7 +75,7 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		chals := mux.Vars(r)["chals"]
+		chals := r.URL.Query().Get(requestedChallenges)
 		cookie, _ := r.Cookie(sessionCookie)
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
 		if err != nil { //Error getting the client ID from cookie
@@ -93,7 +95,8 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 				ErrorResponse(w) //todo create maxrequest error page
 				return
 			}
-			go lm.CreateChallengeEnv(client, mux.Vars(r)["chals"])
+			go lm.CreateChallengeEnv(client, chals)
+			WaitingResponse(w)
 			return
 		}
 
@@ -115,7 +118,7 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 
 		authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
 		http.SetCookie(w, &authC)
-		host := fmt.Sprintf("http://%s:%d/guacamole", lm.conf.Host, cc.guacPort)
+		host := fmt.Sprintf("/guacamole/?%s=%s", requestedChallenges, chals)
 		http.Redirect(w, r, host, http.StatusFound)
 	}
 }
