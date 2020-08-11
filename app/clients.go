@@ -100,6 +100,7 @@ type Client interface {
 	GetClientRequest(string) (*ClientRequest, error)
 	GetAllClientRequests() []*ClientRequest
 	NewClientRequest(string) *ClientRequest
+	RemoveClientRequest(string)
 	CreateToken(key string) (string, error)
 	ID() string
 	Host() string
@@ -150,6 +151,12 @@ func (c *client) NewClientRequest(chals string) *ClientRequest {
 	c.requests[chals] = cc
 
 	return cc
+}
+
+func (c *client) RemoveClientRequest(chals string) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	delete(c.requests, chals)
 }
 
 type ClientRequest struct {

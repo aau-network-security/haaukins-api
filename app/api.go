@@ -127,21 +127,30 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
 	log.Info().Msgf("Creating new Environment with challenges [%s] for [%s]", chals, client.ID())
 
-	cc := client.NewClientRequest(chals)
+	cr := client.NewClientRequest(chals)
 
 	chalsTag, _ := lm.GetChallengesFromRequest(chals)
 
 	env, err := lm.newEnvironment(chalsTag)
 	if err != nil {
-		go cc.NewError(err)
+		go cr.NewError(err)
 		return
 	}
 
 	err = env.Assign(client, chals)
 	if err != nil {
-		go cc.NewError(err)
+		go cr.NewError(err)
+		log.Error().Msg("Error while assigning the environment to the client")
+		env.Close() //todo might cause an error
 		return
 	}
+
+	//Close the environment
+	go func() {
+		<-env.GetTimer().C
+		env.Close()
+		client.RemoveClientRequest(chals)
+	}()
 
 }
 

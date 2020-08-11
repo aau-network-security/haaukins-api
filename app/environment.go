@@ -15,8 +15,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const environmentTimer = 45 * time.Minute
+
 type environment struct {
-	timer      *time.Time
+	timer      *time.Timer
 	challenges []store.Tag
 	lab        hlab.Lab
 	guacamole  guacamole.Guacamole
@@ -25,6 +27,7 @@ type environment struct {
 
 type Environment interface {
 	GetChallenges() string
+	GetTimer() *time.Timer
 	Assign(Client, string) error
 	Close() error //close the dockers and the vms
 }
@@ -66,12 +69,14 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environme
 	}
 
 	env := &environment{
-		timer:      nil, //todo implement the timer
+		timer:      time.NewTimer(environmentTimer),
 		challenges: challenges,
 		lab:        lab,
 		guacamole:  guac,
 		guacPort:   guac.GetPort(),
 	}
+
+	fmt.Println("timer started")
 
 	return env, nil
 }
@@ -135,14 +140,14 @@ func (e *environment) Assign(client Client, chals string) error {
 	}
 	cookie := url.QueryEscape(string(content))
 
-	cc, err := client.GetClientRequest(chals)
+	cr, err := client.GetClientRequest(chals)
 	if err != nil {
 		return errors.New("client request not found")
 	}
-	cc.env = e
-	cc.guacPort = e.guacPort
-	cc.guacCookie = cookie
-	cc.isReady = true
+	cr.env = e
+	cr.guacPort = e.guacPort
+	cr.guacCookie = cookie
+	cr.isReady = true
 
 	return nil
 }
@@ -155,6 +160,10 @@ func (e *environment) GetChallenges() string {
 		i++
 	}
 	return strings.Join(chals, ",")
+}
+
+func (e *environment) GetTimer() *time.Timer {
+	return e.timer
 }
 
 func (e *environment) Close() error {
