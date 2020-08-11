@@ -32,7 +32,7 @@ func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 			return
 		}
 
-		cc, err := client.GetChallenge(challengesTag)
+		cc, err := client.GetClientRequest(challengesTag)
 		if err != nil {
 			ErrorResponse(w)
 			return
@@ -46,7 +46,6 @@ func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 			req.Header.Add("X-Origin-Host", origin.Host)
 			req.URL.Scheme = "http"
 			req.URL.Host = origin.Host
-
 		}
 
 		proxy := &httputil.ReverseProxy{Director: director}

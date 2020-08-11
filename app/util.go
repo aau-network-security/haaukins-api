@@ -87,10 +87,6 @@ func GetTokenFromCookie(token, key string) (string, error) {
 	return id, nil
 }
 
-func GetEnvID(clientID, chals string) string {
-	return fmt.Sprintf("%s---%s", clientID, chals)
-}
-
 func ErrorResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

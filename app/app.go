@@ -17,12 +17,11 @@ type LearningMaterialAPI struct {
 	exStore  store.ExerciseStore
 	vlib     vbox.Library
 	frontend []store.InstanceConfig
-	rcpool   *requestChallengePool
 	closers  []io.Closer
 }
 
 func New(conf *Config) (*LearningMaterialAPI, error) {
-	// better approach is to read from a configuration file
+
 	vlib := vbox.NewLibrary(conf.OvaDir)
 	frontends := []store.InstanceConfig{{
 		Image:    conf.API.FrontEnd.Image,
@@ -33,15 +32,14 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 		return nil, err
 	}
 	crs := NewClientRequestStore()
-	rcp := NewRequestChallengePool(conf.Host)
+
 	return &LearningMaterialAPI{
 		conf:               conf,
 		ClientRequestStore: crs,
 		exStore:            ef,
 		vlib:               vlib,
 		frontend:           frontends,
-		rcpool:             rcp,
-		closers:            []io.Closer{rcp},
+		closers:            []io.Closer{crs},
 	}, nil
 }
 

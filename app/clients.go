@@ -18,11 +18,13 @@ var (
 type ClientRequestStore interface {
 	NewClient(string) Client
 	GetClient(string) (Client, error)
+	GetAllClients() []Client
+	Close() error //To Shut down gracefully
 }
 
 type clientRequestStore struct {
 	m        sync.RWMutex
-	clientsR map[string]*client //map with the client ip
+	clientsR map[string]*client
 }
 
 func NewClientRequestStore() ClientRequestStore {
@@ -44,6 +46,19 @@ func (c *clientRequestStore) GetClient(id string) (Client, error) {
 
 }
 
+func (c *clientRequestStore) GetAllClients() []Client {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
+	clients := make([]Client, len(c.clientsR))
+	var i int
+	for _, c := range c.clientsR {
+		clients[i] = c
+		i++
+	}
+	return clients
+}
+
 func (c *clientRequestStore) NewClient(host string) Client {
 	c.m.Lock()
 	defer c.m.Unlock()
@@ -56,67 +71,97 @@ func (c *clientRequestStore) NewClient(host string) Client {
 	}
 
 	cl := &client{
-		id:           id,
-		host:         host,
-		requestsMade: 0,
-		challenges:   map[string]*ClientChallenge{},
+		id:       id,
+		host:     host,
+		requests: map[string]*ClientRequest{},
 	}
 
 	c.clientsR[id] = cl
 	return cl
 }
 
-type Client interface {
-	GetChallenge(string) (*ClientChallenge, error)
-	NewClientChallenge(string) *ClientChallenge
-	CreateToken(key string) (string, error)
-	ID() string
-	RequestMade() int
-	AddRequest()
-}
-
-type client struct {
-	m            sync.RWMutex
-	id           string
-	host         string
-	requestsMade int
-	challenges   map[string]*ClientChallenge
-}
-
-func (c *client) GetChallenge(chals string) (*ClientChallenge, error) {
+func (c *clientRequestStore) Close() error {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
-	cc, ok := c.challenges[chals]
+	var firstErr error
+	for _, cr := range c.clientsR {
+		for _, ce := range cr.requests {
+			if err := ce.env.Close(); err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+
+	return firstErr
+}
+
+type Client interface {
+	GetClientRequest(string) (*ClientRequest, error)
+	GetAllClientRequests() []*ClientRequest
+	NewClientRequest(string) *ClientRequest
+	CreateToken(key string) (string, error)
+	ID() string
+	Host() string
+	RequestMade() int
+}
+
+type client struct {
+	m        sync.RWMutex
+	id       string
+	host     string
+	requests map[string]*ClientRequest //map with the challengeTags
+}
+
+func (c *client) GetClientRequest(chals string) (*ClientRequest, error) {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
+	cc, ok := c.requests[chals]
 	if !ok {
 		return nil, ErrChallengeNotFound
 	}
 	return cc, nil
 }
 
-func (c *client) NewClientChallenge(chals string) *ClientChallenge {
+func (c *client) GetAllClientRequests() []*ClientRequest {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
+	requests := make([]*ClientRequest, len(c.requests))
+	var i int
+	for _, r := range c.requests {
+		requests[i] = r
+		i++
+	}
+	return requests
+
+}
+
+func (c *client) NewClientRequest(chals string) *ClientRequest {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	cc := &ClientChallenge{
+	cc := &ClientRequest{
 		isReady: false,
 		err:     make(chan error, 0),
 	}
 
-	c.challenges[chals] = cc
+	c.requests[chals] = cc
 
 	return cc
 }
 
-type ClientChallenge struct {
+type ClientRequest struct {
 	isReady    bool
 	err        chan error
+	env        Environment
 	guacCookie string
 	guacPort   uint
 }
 
-func (cc *ClientChallenge) NewError(e error) {
-	cc.err <- e
+func (cr *ClientRequest) NewError(e error) {
+	cr.err <- e
 }
 
 func (c *client) ID() string {
@@ -125,15 +170,14 @@ func (c *client) ID() string {
 	return c.id
 }
 
+func (c *client) Host() string {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	return c.host
+}
+
 func (c *client) RequestMade() int {
 	c.m.RLock()
 	defer c.m.RUnlock()
-	return c.requestsMade
-}
-
-func (c *client) AddRequest() {
-	c.m.Lock()
-	defer c.m.Unlock()
-	c.requestsMade += 1
-	return
+	return len(c.requests) //todo check it works
 }

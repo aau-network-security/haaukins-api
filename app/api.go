@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
-	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -15,9 +15,8 @@ const (
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m := http.NewServeMux()
-	m.HandleFunc("/api/", lm.request(lm.getOrCreateClient(lm.getOrCreateChallengeEnv())))
-	m.HandleFunc("/admin/clients", lm.listClients())
-	m.HandleFunc("/admin/envs", lm.listEnvs())
+	m.HandleFunc("/api/", lm.request(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
+	m.HandleFunc("/admin/envs/", lm.listEnvs())
 	m.HandleFunc("/guacamole/", lm.proxyHandler())
 	return m
 }
@@ -59,7 +58,7 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 				ErrorResponse(w)
 				return
 			}
-			go lm.CreateChallengeEnv(client, r.URL.Query().Get(requestedChallenges))
+			go lm.CreateEnvironment(client, r.URL.Query().Get(requestedChallenges))
 
 			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token, Path: "/"})
 			WaitingResponse(w)
@@ -71,7 +70,7 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 	}
 }
 
-func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
+func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -87,52 +86,52 @@ func (lm *LearningMaterialAPI) getOrCreateChallengeEnv() http.HandlerFunc {
 			ErrorResponse(w)
 			return
 		}
-		cc, err := client.GetChallenge(chals)
+		cr, err := client.GetClientRequest(chals)
 
-		//Create a new challenge
+		//Create a new Environment
 		if err != nil {
 			if client.RequestMade() >= lm.conf.API.MaxRequest {
 				ErrorResponse(w) //todo create maxrequest error page
 				return
 			}
-			go lm.CreateChallengeEnv(client, chals)
+			go lm.CreateEnvironment(client, chals)
 			WaitingResponse(w)
 			return
 		}
 
 		//Check for error while creating the environment
 		select {
-		case err = <-cc.err:
+		case err = <-cr.err:
 			ErrorResponse(w)
 			return
 		default:
 		}
 
-		if !cc.isReady {
-			log.Info().Msgf("[NOT READY] Environment [%s] for the client [%s]", chals, client.ID())
+		if !cr.isReady {
+			//log.Info().Msgf("[NOT READY] Environment [%s] for the client [%s]", chals, client.ID())
 			WaitingResponse(w)
 			return
 		}
 
-		log.Info().Msgf("[READY] Environment [%s] for the client [%s]", chals, client.ID())
+		log.Info().Msgf("[READY] Client Request [%s] for the client [%s]", chals, client.ID())
 
-		authC := http.Cookie{Name: "GUAC_AUTH", Value: cc.guacCookie, Path: "/guacamole/"}
+		authC := http.Cookie{Name: "GUAC_AUTH", Value: cr.guacCookie, Path: "/guacamole/"}
 		http.SetCookie(w, &authC)
 		host := fmt.Sprintf("/guacamole/?%s=%s", requestedChallenges, chals)
+		time.Sleep(5 * time.Second)
 		http.Redirect(w, r, host, http.StatusFound)
 	}
 }
 
-func (lm *LearningMaterialAPI) CreateChallengeEnv(client Client, chals string) {
+func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
-	envID := GetEnvID(client.ID(), chals)
-	log.Info().Msgf("Creating new Environment [%s]", envID)
+	log.Info().Msgf("Creating new Environment with challenges [%s] for [%s]", chals, client.ID())
 
-	cc := client.NewClientChallenge(chals)
+	cc := client.NewClientRequest(chals)
 
 	chalsTag, _ := lm.GetChallengesFromRequest(chals)
 
-	env, err := lm.newEnvironment(chalsTag, envID)
+	env, err := lm.newEnvironment(chalsTag)
 	if err != nil {
 		go cc.NewError(err)
 		return
@@ -144,33 +143,35 @@ func (lm *LearningMaterialAPI) CreateChallengeEnv(client Client, chals string) {
 		return
 	}
 
-	lm.rcpool.AddRequestChallenge(env)
-	client.AddRequest()
-}
-
-func (lm *LearningMaterialAPI) listClients() http.HandlerFunc {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("list of clients"))
-	}
 }
 
 func (lm *LearningMaterialAPI) listEnvs() http.HandlerFunc {
 
+	envTable :=
+		`<table>
+			<thead>
+				<tr><th>Client</th><th>Request Made</th><th>Challenges</th></tr>
+			</thead>
+			<tbody>
+        `
+
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		envs := lm.rcpool.GetALLRequestsChallenge()
-		envsID := make([]string, len(envs))
-		var i int
-		for _, e := range envs {
-			envsID[i] = e.ID()
-			i++
+		clients := lm.ClientRequestStore.GetAllClients()
+		var envs []Environment
+		for _, c := range clients {
+			envTable += fmt.Sprintf(`<tr><td>%s</td><td>%d</td><td>`, c.Host(), c.RequestMade())
+			for _, r := range c.GetAllClientRequests() {
+				envs = append(envs, r.env)
+				envTable += r.env.GetChallenges() + `<br>`
+			}
+			envTable += `</td></tr>`
 		}
+
+		envTable += `</tbody></table>`
 
 		w.WriteHeader(200)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(strings.Join(envsID, "\n")))
+		w.Write([]byte(envTable))
 	}
 }

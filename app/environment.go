@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	hlab "github.com/aau-network-security/haaukins/lab"
@@ -15,7 +16,6 @@ import (
 )
 
 type environment struct {
-	id         string
 	timer      *time.Time
 	challenges []store.Tag
 	lab        hlab.Lab
@@ -24,12 +24,12 @@ type environment struct {
 }
 
 type Environment interface {
-	ID() string
+	GetChallenges() string
 	Assign(Client, string) error
 	Close() error //close the dockers and the vms
 }
 
-func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag, envID string) (Environment, error) {
+func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environment, error) {
 
 	ctx := context.Background()
 	exercises, _ := lm.exStore.GetExercisesByTags(challenges...)
@@ -66,7 +66,6 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag, envID stri
 	}
 
 	env := &environment{
-		id:         envID,
 		timer:      nil, //todo implement the timer
 		challenges: challenges,
 		lab:        lab,
@@ -136,10 +135,11 @@ func (e *environment) Assign(client Client, chals string) error {
 	}
 	cookie := url.QueryEscape(string(content))
 
-	cc, err := client.GetChallenge(chals)
+	cc, err := client.GetClientRequest(chals)
 	if err != nil {
-		return errors.New("challenge not found")
+		return errors.New("client request not found")
 	}
+	cc.env = e
 	cc.guacPort = e.guacPort
 	cc.guacCookie = cookie
 	cc.isReady = true
@@ -147,8 +147,14 @@ func (e *environment) Assign(client Client, chals string) error {
 	return nil
 }
 
-func (e *environment) ID() string {
-	return e.id
+func (e *environment) GetChallenges() string {
+	chals := make([]string, len(e.challenges))
+	var i int
+	for _, c := range e.challenges {
+		chals[i] = string(c)
+		i++
+	}
+	return strings.Join(chals, ",")
 }
 
 func (e *environment) Close() error {
