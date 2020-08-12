@@ -1,4 +1,4 @@
-name: Build and  Publish Docker
+name: Tests
 on: [push, pull_request]
 
 jobs:
@@ -24,4 +24,4 @@ jobs:
              dep ensure
           fi
       - name: Run Tests
-        run: go test -v ./...
+        run: go test -race -v ./...

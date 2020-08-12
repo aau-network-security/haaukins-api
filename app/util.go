@@ -88,14 +88,14 @@ func GetTokenFromCookie(token, key string) (string, error) {
 }
 
 func ClientTooManyRequests(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusServiceUnavailable)
+	w.WriteHeader(http.StatusTooManyRequests)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(tooManyRequestsHTMLTemplate))
 	return
 }
 
 func TooManyRequests(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusTooManyRequests)
+	w.WriteHeader(http.StatusServiceUnavailable)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(tooManyRequestsHTMLTemplate))
 	return
