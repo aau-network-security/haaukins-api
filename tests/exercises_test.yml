@@ -1,0 +1,11 @@
+exercises:
+  - name: Challenge One
+    tags:
+    - xxxx
+    docker:
+    - image: whatever
+  - name: Challenge Two
+    tags:
+    - yyyy
+    docker:
+    - image: whatever

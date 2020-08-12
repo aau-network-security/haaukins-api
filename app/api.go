@@ -32,9 +32,15 @@ func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 
 		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest) //todo make 404 not found page
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = w.Write([]byte(badRequestHTMLTemplate))
+			return
+		}
+
+		//Check if the API can handle another request
+		if len(lm.ClientRequestStore.GetAllRequests()) > lm.conf.API.TotalMaxRequest {
+			TooManyRequests(w) //todo create maxrequest error page
 			return
 		}
 
@@ -90,8 +96,8 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 
 		//Create a new Environment
 		if err != nil {
-			if client.RequestMade() >= lm.conf.API.MaxRequest {
-				ErrorResponse(w) //todo create maxrequest error page
+			if client.RequestMade() >= lm.conf.API.ClientMaxRequest {
+				ClientTooManyRequests(w) //todo create maxrequest error page
 				return
 			}
 			go lm.CreateEnvironment(client, chals)
@@ -131,7 +137,7 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
 	chalsTag, _ := lm.GetChallengesFromRequest(chals)
 
-	env, err := lm.newEnvironment(chalsTag)
+	env, err := lm.NewEnvironment(chalsTag)
 	if err != nil {
 		go cr.NewError(err)
 		return
@@ -145,7 +151,7 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 		return
 	}
 
-	//Close the environment
+	//Close the environment from the Timer
 	go func() {
 		<-env.GetTimer().C
 		env.Close()
@@ -156,15 +162,26 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
 func (lm *LearningMaterialAPI) listEnvs() http.HandlerFunc {
 
-	envTable :=
-		`<table>
-			<thead>
-				<tr><th>Client</th><th>Request Made</th><th>Challenges</th></tr>
-			</thead>
-			<tbody>
-        `
+	envTable := `
+<table>
+	<thead>
+		<tr><th>Client</th><th>Request Made</th><th>Challenges</th></tr>
+	</thead>
+	<tbody>`
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		username, password, authOK := r.BasicAuth()
+
+		if authOK == false {
+			http.Error(w, "Not authorized", 401) //todo maybe create this page
+			return
+		}
+
+		if username != lm.conf.API.Admin.Username || password != lm.conf.API.Admin.Password {
+			http.Error(w, "Not authorized", 401)
+			return
+		}
 
 		clients := lm.ClientRequestStore.GetAllClients()
 		var envs []Environment

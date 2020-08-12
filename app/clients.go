@@ -19,6 +19,7 @@ type ClientRequestStore interface {
 	NewClient(string) Client
 	GetClient(string) (Client, error)
 	GetAllClients() []Client
+	GetAllRequests() []*ClientRequest
 	Close() error //To Shut down gracefully
 }
 
@@ -57,6 +58,20 @@ func (c *clientRequestStore) GetAllClients() []Client {
 		i++
 	}
 	return clients
+}
+
+func (c *clientRequestStore) GetAllRequests() []*ClientRequest {
+	c.m.RLock()
+	defer c.m.RUnlock()
+
+	clients := c.GetAllClients()
+	var cr []*ClientRequest
+	for _, client := range clients {
+		for _, r := range client.GetAllClientRequests() {
+			cr = append(cr, r)
+		}
+	}
+	return cr
 }
 
 func (c *clientRequestStore) NewClient(host string) Client {

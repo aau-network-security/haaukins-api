@@ -32,7 +32,7 @@ type Environment interface {
 	Close() error //close the dockers and the vms
 }
 
-func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environment, error) {
+func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environment, error) {
 
 	ctx := context.Background()
 	exercises, _ := lm.exStore.GetExercisesByTags(challenges...)
@@ -66,6 +66,7 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environme
 
 	if err := lab.Start(ctx); err != nil {
 		log.Error().Msgf("Error while starting lab %s", err.Error())
+		return nil, err
 	}
 
 	env := &environment{
@@ -75,8 +76,6 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag) (Environme
 		guacamole:  guac,
 		guacPort:   guac.GetPort(),
 	}
-
-	fmt.Println("timer started")
 
 	return env, nil
 }

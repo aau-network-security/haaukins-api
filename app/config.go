@@ -29,9 +29,14 @@ type CertificateConfig struct {
 }
 
 type APIConfig struct {
-	SignKey    string `yaml:"sign-key"`
-	MaxRequest int    `yaml:"max-requests"`
-	FrontEnd   struct {
+	SignKey string `yaml:"sign-key"`
+	Admin   struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	} `yaml:"admin"`
+	TotalMaxRequest  int `yaml:"total-max-requests"`
+	ClientMaxRequest int `yaml:"client-max-requests"`
+	FrontEnd         struct {
 		Image  string `yaml:"image"`
 		Memory uint   `yaml:"memory"`
 	} `yaml:"frontend"`
