@@ -101,6 +101,60 @@ func TestCorrectRequests(t *testing.T) {
 	}
 }
 
+func TestAdminRequests(t *testing.T) {
+	config := getTestConfig(10, 4)
+
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting the working directory: %s", err.Error())
+	}
+	config.ExercisesFile = dir + "/exercises_test.yml"
+
+	lm, err := app.New(config)
+
+	if err != nil {
+		t.Fatalf("Error Creating API : %s", err.Error())
+	}
+
+	ts := httptest.NewServer(lm.Handler())
+
+	//Create a new client request
+	cr := lm.NewClient("localhost")
+	_ = cr.NewClientRequest("yyyy")
+
+	tt := []struct {
+		name     string
+		allowed  bool
+		username string
+		password string
+		code     int
+	}{
+		{name: "Not Allowed Client", allowed: true, username: "test", password: "test", code: http.StatusUnauthorized},
+		{name: "Not Allowed Client2", allowed: false, code: http.StatusUnauthorized},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+
+			req, err := http.NewRequest("GET", fmt.Sprintf("%s/admin/envs/", ts.URL), nil)
+			if err != nil {
+				t.Fatalf("Error building request: %s", err.Error())
+			}
+			if tc.allowed {
+				req.SetBasicAuth(tc.username, tc.password)
+			}
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("Error getting response: %s", err.Error())
+			}
+			if resp.StatusCode != tc.code {
+				t.Fatalf("Status code Error. Expected [%d], got [%d]", tc.code, resp.StatusCode)
+			}
+		})
+	}
+}
+
 func TestClientRequests(t *testing.T) {
 	//The client can make just a request
 	config := getTestConfig(10, 1)
