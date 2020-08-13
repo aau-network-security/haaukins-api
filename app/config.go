@@ -37,6 +37,10 @@ type APIConfig struct {
 		Username string `yaml:"username"`
 		Password string `yaml:"password"`
 	} `yaml:"admin"`
+	Captcha struct {
+		SiteKey   string `yaml:"site-key"`
+		SecretKey string `yaml:"secret-key"`
+	} `yaml:"captcha"`
 	TotalMaxRequest  int `yaml:"total-max-requests"`
 	ClientMaxRequest int `yaml:"client-max-requests"`
 	FrontEnd         struct {
