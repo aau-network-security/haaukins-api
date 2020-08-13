@@ -45,8 +45,8 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 
 func (lm *LearningMaterialAPI) Run() {
 	log.Info().Msg("API ready to get requests")
-	if lm.conf.Certs.Enabled {
-		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", lm.conf.Port.Secure), lm.conf.Certs.CertFile, lm.conf.Certs.CertKey, lm.Handler()); err != nil {
+	if lm.conf.TLS.Enabled {
+		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", lm.conf.Port.Secure), lm.conf.TLS.CertFile, lm.conf.TLS.CertKey, lm.Handler()); err != nil {
 			log.Warn().Msgf("Serving error: %s", err)
 		}
 		return

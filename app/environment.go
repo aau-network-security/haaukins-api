@@ -32,6 +32,7 @@ type Environment interface {
 	Close() error //close the dockers and the vms
 }
 
+//Create a new environment (Haaukins Lab)
 func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environment, error) {
 
 	ctx := context.Background()
@@ -80,6 +81,7 @@ func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environme
 	return env, nil
 }
 
+//Assign the environment to the client
 func (e *environment) Assign(client Client, chals string) error {
 
 	clientID := client.ID()
@@ -168,6 +170,5 @@ func (e *environment) GetTimer() *time.Timer {
 func (e *environment) Close() error {
 	err := e.lab.Close()
 	err = e.guacamole.Close()
-
 	return err
 }

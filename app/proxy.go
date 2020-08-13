@@ -7,6 +7,7 @@ import (
 	"net/url"
 )
 
+//Handle the request made to `/guacamole/`, it forwards the request to guacamole instance
 func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 
 	challengesTag := ""

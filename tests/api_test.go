@@ -32,7 +32,7 @@ func getTestConfig(totalR, clientR int) *app.Config {
 			Secure:   443,
 			InSecure: 80,
 		},
-		Certs:         app.CertificateConfig{},
+		TLS:           app.CertificateConfig{},
 		ExercisesFile: "",
 		API: app.APIConfig{
 			SignKey: whatever,
@@ -49,6 +49,7 @@ func getTestConfig(totalR, clientR int) *app.Config {
 	}
 }
 
+//Test requests made to the API
 func TestCorrectRequests(t *testing.T) {
 
 	config := getTestConfig(10, 4)
@@ -101,6 +102,7 @@ func TestCorrectRequests(t *testing.T) {
 	}
 }
 
+//Test request made to the admin part
 func TestAdminRequests(t *testing.T) {
 	config := getTestConfig(10, 4)
 
@@ -155,6 +157,7 @@ func TestAdminRequests(t *testing.T) {
 	}
 }
 
+//Test number of requests made by a client
 func TestClientRequests(t *testing.T) {
 	//The client can make just a request
 	config := getTestConfig(10, 1)
@@ -196,6 +199,7 @@ func TestClientRequests(t *testing.T) {
 	}
 }
 
+//Test total number of request the API can handle
 func TestAPIRequests(t *testing.T) {
 	//The API can handle 5 requests max
 	config := getTestConfig(5, 2)

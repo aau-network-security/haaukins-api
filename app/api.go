@@ -21,6 +21,7 @@ func (lm *LearningMaterialAPI) Handler() http.Handler {
 	return m
 }
 
+//Checks if the requested challenges exists and if the API can handle one more request
 func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +49,8 @@ func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 	}
 }
 
+//Check if the client already made a request before, if yes goes to the next function,
+//if not create a new client and a new environment
 func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +79,9 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 	}
 }
 
+//Check if the requested challenges already exists in an environment,
+//if yes just wait the environment is ready, if not create a new environment checking if the
+//client can make another request
 func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -113,8 +119,8 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		default:
 		}
 
+		//Check if the environment is ready
 		if !cr.isReady {
-			//log.Info().Msgf("[NOT READY] Environment [%s] for the client [%s]", chals, client.ID())
 			WaitingResponse(w)
 			return
 		}
@@ -124,11 +130,13 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		authC := http.Cookie{Name: "GUAC_AUTH", Value: cr.guacCookie, Path: "/guacamole/"}
 		http.SetCookie(w, &authC)
 		host := fmt.Sprintf("/guacamole/?%s=%s", requestedChallenges, chals)
-		time.Sleep(5 * time.Second)
+		time.Sleep(5 * time.Second) //wait a little bit more in order to boot kali linux
 		http.Redirect(w, r, host, http.StatusFound)
 	}
 }
 
+//Create a new client request, create a new environment and assign it to the client
+//Start a go routine that triggers when the timer expires
 func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
 	log.Info().Msgf("Creating new Environment with challenges [%s] for [%s]", chals, client.ID())
@@ -147,19 +155,23 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 	if err != nil {
 		go cr.NewError(err)
 		log.Error().Msg("Error while assigning the environment to the client")
-		env.Close() //todo might cause an error
+		err := env.Close()
+		log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
 		return
 	}
 
 	//Close the environment from the Timer
 	go func() {
 		<-env.GetTimer().C
-		env.Close()
 		client.RemoveClientRequest(chals)
+		err := env.Close()
+		log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
 	}()
 
 }
 
+//todo might be changed and done in a better way, perhaps add timer as well in a new column
+//List the Environments running, it can be called only through admin priviledges
 func (lm *LearningMaterialAPI) listEnvs() http.HandlerFunc {
 
 	envTable := `
