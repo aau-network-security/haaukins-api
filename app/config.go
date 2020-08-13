@@ -1,7 +1,10 @@
 package app
 
 import (
+	"errors"
 	"io/ioutil"
+
+	"github.com/google/uuid"
 
 	"github.com/aau-network-security/haaukins/virtual/docker"
 	dockerclient "github.com/fsouza/go-dockerclient"
@@ -14,7 +17,7 @@ type Config struct {
 		Secure   uint `yaml:"secure,omitempty"`
 		InSecure uint `yaml:"insecure,omitempty"`
 	} `yaml:"port"`
-	Certs              CertificateConfig                `yaml:"tls,omitempty"`
+	TLS                CertificateConfig                `yaml:"tls,omitempty"`
 	ExercisesFile      string                           `yaml:"exercises-file,omitempty"`
 	OvaDir             string                           `yaml:"ova-dir"`
 	API                APIConfig                        `yaml:"api"`
@@ -29,9 +32,14 @@ type CertificateConfig struct {
 }
 
 type APIConfig struct {
-	SignKey    string `yaml:"sign-key"`
-	MaxRequest int    `yaml:"max-requests"`
-	FrontEnd   struct {
+	SignKey string `yaml:"sign-key"`
+	Admin   struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	} `yaml:"admin"`
+	TotalMaxRequest  int `yaml:"total-max-requests"`
+	ClientMaxRequest int `yaml:"client-max-requests"`
+	FrontEnd         struct {
 		Image  string `yaml:"image"`
 		Memory uint   `yaml:"memory"`
 	} `yaml:"frontend"`
@@ -52,6 +60,39 @@ func NewConfigFromFile(path string) (*Config, error) {
 		docker.Registries[repo.ServerAddress] = repo
 	}
 
-	//todo manage the error in the config file
+	if c.Host == "" {
+		c.Host = "localhost"
+	}
+
+	if c.Port.InSecure == 0 {
+		c.Port.InSecure = 80
+	}
+
+	if c.Port.Secure == 0 {
+		c.Port.Secure = 443
+	}
+
+	if c.TLS.CertFile == "" || c.TLS.CertKey == "" {
+		c.TLS.Enabled = false
+	}
+
+	random := uuid.New().String()
+
+	if c.API.SignKey == "" {
+		c.API.SignKey = random
+	}
+
+	if c.API.Admin.Username == "" {
+		c.API.Admin.Username = random
+	}
+
+	if c.API.Admin.Password == "" {
+		c.API.Admin.Password = random
+	}
+
+	if c.OvaDir == "" {
+		return nil, errors.New("ova directory is necessary")
+	}
+
 	return &c, nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	hlab "github.com/aau-network-security/haaukins/lab"
@@ -14,9 +15,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const environmentTimer = 45 * time.Minute
+
 type environment struct {
-	id         string
-	timer      *time.Time
+	timer      *time.Timer
 	challenges []store.Tag
 	lab        hlab.Lab
 	guacamole  guacamole.Guacamole
@@ -24,12 +26,14 @@ type environment struct {
 }
 
 type Environment interface {
-	ID() string
+	GetChallenges() string
+	GetTimer() *time.Timer
 	Assign(Client, string) error
 	Close() error //close the dockers and the vms
 }
 
-func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag, envID string) (Environment, error) {
+//Create a new environment (Haaukins Lab)
+func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environment, error) {
 
 	ctx := context.Background()
 	exercises, _ := lm.exStore.GetExercisesByTags(challenges...)
@@ -63,11 +67,11 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag, envID stri
 
 	if err := lab.Start(ctx); err != nil {
 		log.Error().Msgf("Error while starting lab %s", err.Error())
+		return nil, err
 	}
 
 	env := &environment{
-		id:         envID,
-		timer:      nil, //todo implement the timer
+		timer:      time.NewTimer(environmentTimer),
 		challenges: challenges,
 		lab:        lab,
 		guacamole:  guac,
@@ -77,6 +81,7 @@ func (lm *LearningMaterialAPI) newEnvironment(challenges []store.Tag, envID stri
 	return env, nil
 }
 
+//Assign the environment to the client
 func (e *environment) Assign(client Client, chals string) error {
 
 	clientID := client.ID()
@@ -136,24 +141,34 @@ func (e *environment) Assign(client Client, chals string) error {
 	}
 	cookie := url.QueryEscape(string(content))
 
-	cc, err := client.GetChallenge(chals)
+	cr, err := client.GetClientRequest(chals)
 	if err != nil {
-		return errors.New("challenge not found")
+		return errors.New("client request not found")
 	}
-	cc.guacPort = e.guacPort
-	cc.guacCookie = cookie
-	cc.isReady = true
+	cr.env = e
+	cr.guacPort = e.guacPort
+	cr.guacCookie = cookie
+	cr.isReady = true
 
 	return nil
 }
 
-func (e *environment) ID() string {
-	return e.id
+func (e *environment) GetChallenges() string {
+	chals := make([]string, len(e.challenges))
+	var i int
+	for _, c := range e.challenges {
+		chals[i] = string(c)
+		i++
+	}
+	return strings.Join(chals, ",")
+}
+
+func (e *environment) GetTimer() *time.Timer {
+	return e.timer
 }
 
 func (e *environment) Close() error {
 	err := e.lab.Close()
 	err = e.guacamole.Close()
-
 	return err
 }

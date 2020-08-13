@@ -17,12 +17,11 @@ type LearningMaterialAPI struct {
 	exStore  store.ExerciseStore
 	vlib     vbox.Library
 	frontend []store.InstanceConfig
-	rcpool   *requestChallengePool
 	closers  []io.Closer
 }
 
 func New(conf *Config) (*LearningMaterialAPI, error) {
-	// better approach is to read from a configuration file
+
 	vlib := vbox.NewLibrary(conf.OvaDir)
 	frontends := []store.InstanceConfig{{
 		Image:    conf.API.FrontEnd.Image,
@@ -33,22 +32,21 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 		return nil, err
 	}
 	crs := NewClientRequestStore()
-	rcp := NewRequestChallengePool(conf.Host)
+
 	return &LearningMaterialAPI{
 		conf:               conf,
 		ClientRequestStore: crs,
 		exStore:            ef,
 		vlib:               vlib,
 		frontend:           frontends,
-		rcpool:             rcp,
-		closers:            []io.Closer{rcp},
+		closers:            []io.Closer{crs},
 	}, nil
 }
 
 func (lm *LearningMaterialAPI) Run() {
 	log.Info().Msg("API ready to get requests")
-	if lm.conf.Certs.Enabled {
-		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", lm.conf.Port.Secure), lm.conf.Certs.CertFile, lm.conf.Certs.CertKey, lm.Handler()); err != nil {
+	if lm.conf.TLS.Enabled {
+		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", lm.conf.Port.Secure), lm.conf.TLS.CertFile, lm.conf.TLS.CertKey, lm.Handler()); err != nil {
 			log.Warn().Msgf("Serving error: %s", err)
 		}
 		return

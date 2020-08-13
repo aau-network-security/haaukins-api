@@ -131,3 +131,11 @@ const errorHTMLTemplate = `
   </body>
 </html>
 `
+
+const tooManyRequestsHTMLTemplate = `
+<html lang="en" dir="ltr">
+  <body>
+	too many requests
+  </body>
+</html>
+`

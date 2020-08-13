@@ -14,6 +14,7 @@ import (
 	"github.com/aau-network-security/haaukins/store"
 )
 
+//Gracefully shut down function
 func (lm *LearningMaterialAPI) Close() error {
 	var errs error
 	var wg sync.WaitGroup
@@ -37,10 +38,10 @@ func (lm *LearningMaterialAPI) Close() error {
 	return errs
 }
 
-//Get the challenges from the store, return error if the challenges tag dosen't exist
-func (lm *LearningMaterialAPI) GetChallengesFromRequest(challengesR string) ([]store.Tag, error) {
+//Get the challenges from the store (haaukins), return error if the challenges tag dosen't exist
+func (lm *LearningMaterialAPI) GetChallengesFromRequest(requestedChallenges string) ([]store.Tag, error) {
 
-	challenges := strings.Split(challengesR, ",")
+	challenges := strings.Split(requestedChallenges, ",")
 	tags := make([]store.Tag, len(challenges))
 	for i, s := range challenges {
 		t := store.Tag(s)
@@ -53,6 +54,7 @@ func (lm *LearningMaterialAPI) GetChallengesFromRequest(challengesR string) ([]s
 	return tags, nil
 }
 
+//Create the token that will be used as a cookie
 func (c *client) CreateToken(key string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		JWT_CLIENT_ID: c.id,
@@ -64,6 +66,7 @@ func (c *client) CreateToken(key string) (string, error) {
 	return tokenStr, nil
 }
 
+//Get the token from the cookie
 func GetTokenFromCookie(token, key string) (string, error) {
 	jwtToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -87,8 +90,19 @@ func GetTokenFromCookie(token, key string) (string, error) {
 	return id, nil
 }
 
-func GetEnvID(clientID, chals string) string {
-	return fmt.Sprintf("%s---%s", clientID, chals)
+//todo use only  a function to make the response
+func ClientTooManyRequests(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusTooManyRequests)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(tooManyRequestsHTMLTemplate))
+	return
+}
+
+func TooManyRequests(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusServiceUnavailable)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(tooManyRequestsHTMLTemplate))
+	return
 }
 
 func ErrorResponse(w http.ResponseWriter) {
