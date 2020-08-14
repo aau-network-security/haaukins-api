@@ -38,6 +38,7 @@ type APIConfig struct {
 		Password string `yaml:"password"`
 	} `yaml:"admin"`
 	Captcha struct {
+		Enabled   bool   `yaml:"enabled"`
 		SiteKey   string `yaml:"site-key"`
 		SecretKey string `yaml:"secret-key"`
 	} `yaml:"captcha"`
