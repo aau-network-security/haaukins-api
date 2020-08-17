@@ -44,6 +44,8 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 }
 
 func (lm *LearningMaterialAPI) Run() {
+	//todo put the logs about the api is running on TLS or not
+	//
 	log.Info().Msg("API ready to get requests")
 	if lm.conf.TLS.Enabled {
 		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", lm.conf.Port.Secure), lm.conf.TLS.CertFile, lm.conf.TLS.CertKey, lm.Handler()); err != nil {

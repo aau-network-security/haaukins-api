@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"text/template"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -15,14 +16,40 @@ const (
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m := http.NewServeMux()
-	m.HandleFunc("/api/", lm.request(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
+	m.HandleFunc("/", lm.handleIndex())
+	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
 	m.HandleFunc("/admin/envs/", lm.listEnvs())
 	m.HandleFunc("/guacamole/", lm.proxyHandler())
+
+	m.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("resources/public"))))
+
 	return m
 }
 
+func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
+	tmpl, err := template.ParseFiles(
+		"resources/private/base.tmpl.html",
+		"resources/private/index.tmpl.html",
+	)
+	if err != nil {
+		log.Error().Msgf("error index tmpl: %s", err.Error())
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r) //maybe create 404 page
+			return
+		}
+
+		//data := am.getSiteInfo(w, r)
+		if err := tmpl.Execute(w, nil); err != nil {
+			log.Error().Msgf("template err index:: %s", err.Error())
+		}
+	}
+}
+
 //Checks if the requested challenges exists and if the API can handle one more request
-func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
+func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
