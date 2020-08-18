@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"text/template"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/aau-network-security/haaukins/virtual/docker"
 
@@ -88,6 +91,22 @@ func GetTokenFromCookie(token, key string) (string, error) {
 		return "", ErrInvalidTokenFormat
 	}
 	return id, nil
+}
+
+func notFoundPage(w http.ResponseWriter, r *http.Request) {
+
+	tmpl, err := template.ParseFiles(
+		"resources/private/base.tmpl.html",
+		"resources/private/404.tmpl.html",
+	)
+	if err != nil {
+		log.Error().Msgf("error index tmpl: %s", err.Error())
+	}
+
+	w.WriteHeader(http.StatusNotFound)
+	if err := tmpl.Execute(w, nil); err != nil {
+		log.Error().Msgf("template err index: %s", err.Error())
+	}
 }
 
 //todo use only  a function to make the response

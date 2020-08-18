@@ -37,7 +37,7 @@ func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
-			http.NotFound(w, r) //maybe create 404 page
+			notFoundPage(w, r)
 			return
 		}
 
@@ -52,6 +52,11 @@ func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		if r.URL.Path != "/api/" {
+			notFoundPage(w, r)
+			return
+		}
 
 		// No need to sanitize the url requested
 		//https://stackoverflow.com/questions/23285364/does-go-sanitize-urls-for-web-requests
