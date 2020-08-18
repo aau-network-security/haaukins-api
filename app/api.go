@@ -183,7 +183,9 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 		go cr.NewError(err)
 		log.Error().Msg("Error while assigning the environment to the client")
 		err := env.Close()
-		log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
+		if err != nil {
+			log.Error().Msgf("Error closing the environment through timer, assign function: %s", err.Error())
+		}
 		return
 	}
 
@@ -192,7 +194,9 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 		<-env.GetTimer().C
 		client.RemoveClientRequest(chals)
 		err := env.Close()
-		log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
+		if err != nil {
+			log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
+		}
 	}()
 
 }
