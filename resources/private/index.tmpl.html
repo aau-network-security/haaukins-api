@@ -1,17 +1,55 @@
 {{ define "content" }}
-    <img class="wave-bg-signup" src="/assets/img/wave-signup.png">
-    <div class="container">
-        <div class="row">
-            <div class="col align-self-center" style="height: 100vh!important;">
-                <div class="login-content h-100">
+    <div class="content-page">
+        <p class="text-justify">Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Loreum.</p>
+        <form action="/" method="get" class="mt-4">
+            <div class="form-actions mb-3">
+                <button type="submit" class="btn btn-lg btn-aau-sec text-center">Launch Environment</button>
+            </div>
+            <div class="d-inline-block p-2">
+                <h5>Select your challenges</h5>
+            </div>
+            <div class="d-inline-block p-2 float-right">
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="checkbox_select_all">
+                    <label class="custom-control-label" for="checkbox_select_all">Select All*</label>
+                </div>
+            </div>
+            <div class="challenges-fiels p-3 mt-2">
 
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="nav flex-column nav-pills sticky-top" id="challengesCategory" role="tablist" aria-orientation="vertical">
+                            <a class="nav-link active show" id="web-exploit-tab" data-toggle="pill" href="#web-exploit" role="tab" aria-controls="web-exploit" aria-selected="true">Web_Exploit.</a>
+                            <a class="nav-link" id="forensics-tab" data-toggle="pill" href="#forensics" role="tab" aria-controls="forensics" aria-selected="false">Forensics</a>
+                            <a class="nav-link" id="binary-tab" data-toggle="pill" href="#binary" role="tab" aria-controls="binary" aria-selected="false">Binary</a>
+                            <a class="nav-link" id="reverse-eng-tab" data-toggle="pill" href="#reverse-eng" role="tab" aria-controls="reverse-eng" aria-selected="false">Reverse_Eng.</a>
+                            <a class="nav-link" id="cryptography-tab" data-toggle="pill" href="#cryptography" role="tab" aria-controls="cryptography" aria-selected="false">Cryptography</a>
+                        </div>
+                    </div>
+                    <div class="col-md-8 p-4 p-md-0 mt-3 mt-md-0">
+                        <div class="tab-content" id="v-pills-tabContent">
+                            <div class="tab-pane fade active show" id="web-exploit" role="tabpanel" aria-labelledby="web-exploit-tab">
+                                aaa
+                            </div>
+                            <div class="tab-pane fade" id="forensics" role="tabpanel" aria-labelledby="forensics-tab">
+                                aaavvvvvvvvvvvvv
+                            </div>
+                            <div class="tab-pane fade" id="binary" role="tabpanel" aria-labelledby="binary-tab">
+                                aafrawwwww
+                            </div>
+                            <div class="tab-pane fade" id="reverse-eng" role="tabpanel" aria-labelledby="reverse-eng-tab">
+                                dwdawadwa
+                            </div>
+                            <div class="tab-pane fade" id="cryptography" role="tabpanel" aria-labelledby="cryptography-tab">
+                                bbbbbbbbbbbbbbbbbb
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
             </div>
-            <div class="col myd-none" style="height: 100vh!important;">
-                <div class="svg-login h-100">
-                    <img src="/assets/img/login2.svg" class="img-fluid">
-                </div>
-            </div>
-        </div>
+        </form>
+        <p>* More challenges you select, more time the API needs to create the environment</p>
+        <p>** The Environment will be shut down after <strong>45 minutes</strong></p>
     </div>
 {{ end }}

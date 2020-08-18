@@ -9,25 +9,32 @@
     <title>Haaukins API</title>
     <link rel="stylesheet" href="/assets/css/api.css">
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Orbitron|Ubuntu&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Audiowide&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div style="position: absolute; width: 100%">
+    <div class="background-img"></div>
+    <div class="my-navbar">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-4 col-md-3 col-12 text-center">
-                    <img src="/assets/img/haaukins.png" class="haaukins-logo" alt="...">
+            <div class="row align-items-center mt-3 mt-md-5">
+                <div class="col-md-4 col-12 text-center">
+                    <img src="/assets/img/haaukins.png" class="haaukins-logo" alt="Haaukins Brand">
                 </div>
-                <div class="col-lg-8 col-md-8 col-12">
-                    <h3>Haaukins Platform API</h3>
-                    <p>bla bla bla dwadwa daw awdaw dadawd adwad a</p>
+                <div class="col-md-8 col-12 text-center mt-3 mt-md-0">
+                        <h1 class="brand-name float-none float-lg-left">Haaukins Platform API</h1>
+                        <h4 class="brand-description float-none float-lg-left">Play with Cyber Security Exercises through your browser</h4>
+                        <h6 class="brand-powered float-none float-lg-left">Develop at
+                            <a class="color-sec-aau" href="http://es.aau.dk/">Aalborg univerisity</a> in WCS and supported by
+                            <a class="color-sec-aau" href="https://www.industriensfond.dk/">Danish industry fundation</a>
+                        </h6>
                 </div>
             </div>
         </div>
     </div>
 
-    <main id="content">
+    <div id="content" class="container">
         {{ template "content" . }}
-    </main>
+    </div>
     <footer class="footer">
         <div class="container text-center">
             <p style="margin:0px">
@@ -35,5 +42,5 @@
             </p>
         </div>
     </footer>
-</body>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 </html>
