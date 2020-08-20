@@ -66,15 +66,19 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 
 		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest) //todo make 404 not found page
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(badRequestHTMLTemplate))
+			errorPage(w, r, http.StatusBadRequest, returnError{
+				Content:         "Challenges Tag not found",
+				Toomanyrequests: false,
+			})
 			return
 		}
 
 		//Check if the API can handle another request
 		if len(lm.ClientRequestStore.GetAllRequests()) > lm.conf.API.TotalMaxRequest {
-			TooManyRequests(w) //todo create maxrequest error page
+			errorPage(w, r, http.StatusServiceUnavailable, returnError{
+				Content:         "API reached the maximum number of requests it can handles",
+				Toomanyrequests: true,
+			})
 			return
 		}
 
@@ -97,7 +101,10 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 
 			token, err := client.CreateToken(lm.conf.API.SignKey)
 			if err != nil {
-				ErrorResponse(w)
+				errorPage(w, r, http.StatusInternalServerError, returnError{
+					Content:         "Internal Error. Please contact Haaukins maintainers",
+					Toomanyrequests: false,
+				})
 				return
 			}
 			go lm.CreateEnvironment(client, r.URL.Query().Get(requestedChallenges))
@@ -123,12 +130,18 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		cookie, _ := r.Cookie(sessionCookie)
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
 		if err != nil { //Error getting the client ID from cookie
-			ErrorResponse(w)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Toomanyrequests: false,
+			})
 			return
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
 		if err != nil { //Error getting Client
-			ErrorResponse(w)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Toomanyrequests: false,
+			})
 			return
 		}
 		cr, err := client.GetClientRequest(chals)
@@ -136,7 +149,10 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		//Create a new Environment
 		if err != nil {
 			if client.RequestMade() >= lm.conf.API.ClientMaxRequest {
-				ClientTooManyRequests(w) //todo create maxrequest error page
+				errorPage(w, r, http.StatusTooManyRequests, returnError{
+					Content:         "You reached the maximum number of requests you can make",
+					Toomanyrequests: true,
+				})
 				return
 			}
 			go lm.CreateEnvironment(client, chals)
@@ -147,7 +163,10 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		//Check for error while creating the environment
 		select {
 		case err = <-cr.err:
-			ErrorResponse(w)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Toomanyrequests: false,
+			})
 			return
 		default:
 		}

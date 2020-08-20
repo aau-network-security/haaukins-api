@@ -111,26 +111,27 @@ func notFoundPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//todo use only  a function to make the response
-func ClientTooManyRequests(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusTooManyRequests)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(tooManyRequestsHTMLTemplate))
-	return
+type returnError struct {
+	Content         string
+	Toomanyrequests bool
 }
 
-func TooManyRequests(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusServiceUnavailable)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(tooManyRequestsHTMLTemplate))
-	return
-}
+func errorPage(w http.ResponseWriter, r *http.Request, statusCode int, error returnError) {
 
-func ErrorResponse(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(errorHTMLTemplate))
-	return
+	tmpl, err := template.ParseFiles(
+		"resources/private/base.tmpl.html",
+		"resources/private/error.tmpl.html",
+	)
+	if err != nil {
+		log.Error().Msgf("error index tmpl: %s", err.Error())
+		w.WriteHeader(statusCode)
+		return
+	}
+
+	w.WriteHeader(statusCode)
+	if err := tmpl.Execute(w, error); err != nil {
+		log.Error().Msgf("template err index: %s", err.Error())
+	}
 }
 
 func WaitingResponse(w http.ResponseWriter) {

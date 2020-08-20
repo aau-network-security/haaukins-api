@@ -24,18 +24,27 @@ func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
 		if err != nil { //Error getting the client ID from cookie
-			ErrorResponse(w)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Toomanyrequests: false,
+			})
 			return
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
 		if err != nil { //Error getting Client
-			ErrorResponse(w)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Toomanyrequests: false,
+			})
 			return
 		}
 
 		cc, err := client.GetClientRequest(challengesTag)
 		if err != nil {
-			ErrorResponse(w)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Toomanyrequests: false,
+			})
 			return
 		}
 

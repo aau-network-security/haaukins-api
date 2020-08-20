@@ -1,0 +1,16 @@
+{{ define "content" }}
+    <div id="error_content">
+        <div class="row mt-5">
+            <div class="col-md-12 text-center">
+                {{ if .Toomanyrequests}}
+                    <img src="/assets/img/requests.svg" class="img-fluid" width="500">
+                {{ else }}
+                    <img src="/assets/img/error.svg" class="img-fluid" width="500">
+                {{ end }}
+                <h3 class="text-center mt-3">Oops... Something went wrong!</h3>
+                <p class="error-page-color">{{ .Content }}</p>
+                <a href="/" class="btn btn-haaukins mt-3">Try Again Later</a>
+            </div>
+        </div>
+    </div>
+{{ end }}
