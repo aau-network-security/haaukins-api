@@ -101,6 +101,8 @@ func notFoundPage(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		log.Error().Msgf("error index tmpl: %s", err.Error())
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
 	w.WriteHeader(http.StatusNotFound)

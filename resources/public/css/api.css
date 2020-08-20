@@ -45,7 +45,9 @@ body {
 }
 
 .btn-haaukins{
-    background: #211A52;
+    background-color: #211A52 !important;
+    border-color: #211A52 !important;
+    color: #eee !important;
 }
 
 #index_content{
