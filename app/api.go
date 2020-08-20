@@ -20,6 +20,7 @@ func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
 	m.HandleFunc("/admin/envs/", lm.listEnvs())
 	m.HandleFunc("/guacamole/", lm.proxyHandler())
+	m.HandleFunc("/challengesFrontend", lm.handleFrontendChallengesRequest())
 
 	m.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("resources/public"))))
 

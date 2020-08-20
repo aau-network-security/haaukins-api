@@ -147,6 +147,10 @@ body {
     overflow-y: auto;
 }
 
+.challenges-fiels-error{
+    border: 3px solid #b31515!important;
+}
+
 .form-actions {
     margin: 0;
     background-color: transparent;
@@ -155,6 +159,11 @@ body {
 
 .nav-link {
     color: #211a52 !important;
+}
+
+.aau-color{
+    color: #211a52 !important;
+    font-weight: bold;
 }
 
 .nav-link.active {
@@ -202,6 +211,9 @@ body {
 }
 
 @media screen and (max-width: 576px){
+    .background-img{
+        min-height: 80rem;
+    }
     .brand-name {
         font-size: 2.4rem;
     }
