@@ -14,6 +14,7 @@ import (
 type LearningMaterialAPI struct {
 	conf *Config
 	ClientRequestStore
+	captcha  Recaptcha
 	exStore  store.ExerciseStore
 	vlib     vbox.Library
 	frontend []store.InstanceConfig
@@ -36,6 +37,7 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 	return &LearningMaterialAPI{
 		conf:               conf,
 		ClientRequestStore: crs,
+		captcha:            NewRecaptcha(conf.API.Captcha.SecretKey),
 		exStore:            ef,
 		vlib:               vlib,
 		frontend:           frontends,

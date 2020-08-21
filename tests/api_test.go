@@ -46,6 +46,11 @@ func getTestConfig(totalR, clientR int) *app.Config {
 				Username: whatever,
 				Password: whatever,
 			},
+			Captcha: struct {
+				Enabled   bool   `yaml:"enabled"`
+				SiteKey   string `yaml:"site-key"`
+				SecretKey string `yaml:"secret-key"`
+			}{Enabled: false},
 			TotalMaxRequest:  totalR,
 			ClientMaxRequest: clientR,
 		},
