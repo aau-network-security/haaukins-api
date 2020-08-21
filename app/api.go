@@ -182,7 +182,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		//Create a new Environment
 		if err != nil {
 			if client.RequestMade() >= lm.conf.API.ClientMaxRequest {
-				log.Debug().Msgf("Client [%d] has reached max number of requests", clientID)
+				log.Debug().Msgf("Client [%s] has reached max number of requests", clientID)
 				errorPage(w, r, http.StatusTooManyRequests, returnError{
 					Content:         errorClientRequests,
 					Toomanyrequests: true,

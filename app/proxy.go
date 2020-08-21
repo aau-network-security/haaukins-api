@@ -35,7 +35,7 @@ func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
 		if err != nil { //Error getting Client
-			log.Error().Msgf("Proxy Error getting client [%d]: %v", clientID, err)
+			log.Error().Msgf("Proxy Error getting client [%ds: %v", clientID, err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
 				Content:         errorGetClient,
 				Toomanyrequests: false,
@@ -45,7 +45,7 @@ func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 
 		cc, err := client.GetClientRequest(challengesTag)
 		if err != nil {
-			log.Error().Msgf("Proxy Error getting client request [%s]: %v", challengesTag)
+			log.Error().Msgf("Proxy Error getting client request [%s]: %v", challengesTag, err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
 				Content:         errorGetCR,
 				Toomanyrequests: false,
