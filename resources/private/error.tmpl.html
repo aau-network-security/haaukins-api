@@ -9,6 +9,9 @@
                 {{ end }}
                 <h3 class="text-center mt-3">Oops... Something went wrong!</h3>
                 <p class="error-page-color">{{ .Content }}</p>
+                {{ if not .Toomanyrequests}}
+                    <p class="error-page-color">Please contact <a class="color-sec-aau" href="https://www.cybertraining.dk/haaukinsteam/"> Haaukins maintainers </a> if error occurs again</p>
+                {{ end }}
                 <a href="/" class="btn btn-haaukins mt-3">Try Again Later</a>
             </div>
         </div>

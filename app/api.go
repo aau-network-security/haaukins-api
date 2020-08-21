@@ -12,6 +12,16 @@ import (
 const (
 	requestedChallenges = "challenges"
 	sessionCookie       = "haaukins_session"
+
+	errorChallengesTag = "Challenges Tag not found"
+	errorCreateToken   = "Error creating session token"
+	errorGetToken      = "Error getting session token"
+	errorGetClient     = "Error getting client"
+	errorCreateEnv     = "Error creating the environment"
+	errorGetCR         = "Error getting the environment"
+
+	errorAPIRequests    = "API reached the maximum number of requests it can handles"
+	errorClientRequests = "You reached the maximum number of requests you can make"
 )
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
@@ -42,8 +52,8 @@ func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 			return
 		}
 
-		//data := am.getSiteInfo(w, r)
 		if err := tmpl.Execute(w, nil); err != nil {
+			http.NotFound(w, r)
 			log.Error().Msgf("template err index:: %s", err.Error())
 		}
 	}
@@ -67,7 +77,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
 			errorPage(w, r, http.StatusBadRequest, returnError{
-				Content:         "Challenges Tag not found",
+				Content:         errorChallengesTag,
 				Toomanyrequests: false,
 			})
 			return
@@ -75,8 +85,9 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 
 		//Check if the API can handle another request
 		if len(lm.ClientRequestStore.GetAllRequests()) > lm.conf.API.TotalMaxRequest {
+			log.Info().Msg("API reached the maximum number of requests it can handles")
 			errorPage(w, r, http.StatusServiceUnavailable, returnError{
-				Content:         "API reached the maximum number of requests it can handles",
+				Content:         errorAPIRequests,
 				Toomanyrequests: true,
 			})
 			return
@@ -101,8 +112,9 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 
 			token, err := client.CreateToken(lm.conf.API.SignKey)
 			if err != nil {
+				log.Error().Msgf("Error creating session token: %v", err)
 				errorPage(w, r, http.StatusInternalServerError, returnError{
-					Content:         "Internal Error. Please contact Haaukins maintainers",
+					Content:         errorCreateToken,
 					Toomanyrequests: false,
 				})
 				return
@@ -130,16 +142,18 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		cookie, _ := r.Cookie(sessionCookie)
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
 		if err != nil { //Error getting the client ID from cookie
+			log.Error().Msgf("Error getting session token: %v", err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Content:         errorGetToken,
 				Toomanyrequests: false,
 			})
 			return
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
 		if err != nil { //Error getting Client
+			log.Error().Msgf("Error getting client [%d]: %v", clientID, err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Content:         errorGetClient,
 				Toomanyrequests: false,
 			})
 			return
@@ -149,8 +163,9 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		//Create a new Environment
 		if err != nil {
 			if client.RequestMade() >= lm.conf.API.ClientMaxRequest {
+				log.Debug().Msgf("Client [%d] has reached max number of requests", clientID)
 				errorPage(w, r, http.StatusTooManyRequests, returnError{
-					Content:         "You reached the maximum number of requests you can make",
+					Content:         errorClientRequests,
 					Toomanyrequests: true,
 				})
 				return
@@ -163,8 +178,9 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		//Check for error while creating the environment
 		select {
 		case err = <-cr.err:
+			log.Error().Msgf("Error while creating the environment: %v", err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         "Internal Error. Please contact Haaukins maintainers",
+				Content:         errorCreateEnv,
 				Toomanyrequests: false,
 			})
 			return

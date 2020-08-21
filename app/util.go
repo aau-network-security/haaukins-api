@@ -107,6 +107,7 @@ func notFoundPage(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNotFound)
 	if err := tmpl.Execute(w, nil); err != nil {
+		http.NotFound(w, r)
 		log.Error().Msgf("template err index: %s", err.Error())
 	}
 }
@@ -130,6 +131,7 @@ func errorPage(w http.ResponseWriter, r *http.Request, statusCode int, error ret
 
 	w.WriteHeader(statusCode)
 	if err := tmpl.Execute(w, error); err != nil {
+		http.NotFound(w, r)
 		log.Error().Msgf("template err index: %s", err.Error())
 	}
 }

@@ -21,7 +21,6 @@ const (
 
 var (
 	newline = []byte{'\n'}
-	space   = []byte{' '}
 )
 
 var upgrader = websocket.Upgrader{
@@ -50,6 +49,7 @@ type FrontendClient struct {
 	send chan []byte
 }
 
+//Send the chalenges to the API frontend in order to let the users select which one run on their environment
 func (lm *LearningMaterialAPI) handleFrontendChallengesRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -61,6 +61,8 @@ func (lm *LearningMaterialAPI) handleFrontendChallengesRequest() http.HandlerFun
 		client := &FrontendClient{conn: conn, send: make(chan []byte, 256)}
 
 		var categories []Category
+
+		//Get che Categories
 		for _, c := range lm.getChallengeCategories() {
 			tag := strings.Join(strings.Fields(c), "")
 			categories = append(categories, Category{
@@ -70,12 +72,14 @@ func (lm *LearningMaterialAPI) handleFrontendChallengesRequest() http.HandlerFun
 			})
 		}
 
+		//loop throw the exercises
 		for _, exercise := range lm.exStore.ListExercises() {
 			chal := Challenge{
 				Name: exercise.Name,
 				Tag:  string(exercise.Tags[0]),
 			}
 
+			//if an exercise contains more challenges, write them in the exercise name
 			flags := exercise.Flags()
 			if len(flags) > 1 {
 				chal.Name += " ("
@@ -107,6 +111,7 @@ func (lm *LearningMaterialAPI) handleFrontendChallengesRequest() http.HandlerFun
 	}
 }
 
+//Send a message to frontend. It uses s ticker in order to close the connection after the data is sent
 func (c *FrontendClient) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -146,6 +151,7 @@ func (c *FrontendClient) writePump() {
 	}
 }
 
+//Get challenges categories
 func (lm *LearningMaterialAPI) getChallengeCategories() []string {
 	keys := make(map[string]bool)
 	challengeCats := []string{}
