@@ -1,6 +1,7 @@
 package app
 
 import (
+	b64 "encoding/base64"
 	"fmt"
 	"net/http"
 	"text/template"
@@ -80,6 +81,24 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 				Toomanyrequests: true,
 			})
 			return
+		}
+
+		if lm.conf.API.Captcha.Enabled {
+			chalsEncoded := b64.StdEncoding.EncodeToString([]byte(r.URL.Query().Get(requestedChallenges)))
+			_, err = r.Cookie(chalsEncoded)
+			if err != nil {
+				isValid := lm.captcha.Verify(r.FormValue("g-recaptcha-response"))
+				if !isValid {
+					formActionURL := fmt.Sprintf("/api/?%s=%s", requestedChallenges, r.URL.Query().Get(requestedChallenges))
+
+					w.WriteHeader(http.StatusBadRequest) //todo make 404 not found page
+					w.Header().Set("Content-Type", "text/html; charset=utf-8")
+					_, _ = w.Write([]byte(getCaptchaPage(formActionURL, lm.conf.API.Captcha.SiteKey)))
+					return
+				}
+				authC := http.Cookie{Name: chalsEncoded, Value: r.FormValue("g-recaptcha-response"), Path: "/", MaxAge: 200}
+				http.SetCookie(w, &authC)
+			}
 		}
 
 		next.ServeHTTP(w, r)
