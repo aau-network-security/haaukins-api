@@ -170,7 +170,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
 		if err != nil { //Error getting Client
-			log.Error().Msgf("Error getting client [%d]: %v", clientID, err)
+			log.Error().Msgf("Error getting client [%s]: %v", clientID, err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
 				Content:         errorGetClient,
 				Toomanyrequests: false,
