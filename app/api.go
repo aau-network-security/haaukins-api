@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -170,23 +171,21 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
 }
 
-//todo might be changed and done in a better way, perhaps add timer as well in a new column
 //List the Environments running, it can be called only through admin priviledges
 func (lm *LearningMaterialAPI) listEnvs() http.HandlerFunc {
 
-	envTable := `
-<table>
-	<thead>
-		<tr><th>Client</th><th>Request Made</th><th>Challenges</th></tr>
-	</thead>
-	<tbody>`
+	type ListEnvs struct {
+		Client      string
+		Host        string
+		Environment []string
+	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		username, password, authOK := r.BasicAuth()
 
 		if authOK == false {
-			http.Error(w, "Not authorized", 401) //todo maybe create this page
+			http.Error(w, "Not authorized", 401)
 			return
 		}
 
@@ -196,20 +195,27 @@ func (lm *LearningMaterialAPI) listEnvs() http.HandlerFunc {
 		}
 
 		clients := lm.ClientRequestStore.GetAllClients()
-		var envs []Environment
+		listEnvs := make([]ListEnvs, len(clients))
+
 		for _, c := range clients {
-			envTable += fmt.Sprintf(`<tr><td>%s</td><td>%d</td><td>`, c.Host(), c.RequestMade())
-			for _, r := range c.GetAllClientRequests() {
-				envs = append(envs, r.env)
-				envTable += r.env.GetChallenges() + `<br>`
+			le := ListEnvs{
+				Client:      c.ID(),
+				Host:        c.Host(),
+				Environment: []string{},
 			}
-			envTable += `</td></tr>`
+			for _, r := range c.GetAllClientRequests() {
+				le.Environment = append(le.Environment, r.env.GetChallenges())
+			}
+			listEnvs = append(listEnvs, le)
 		}
 
-		envTable += `</tbody></table>`
+		jsonLE, err := json.Marshal(listEnvs)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-		w.WriteHeader(200)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(envTable))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonLE)
 	}
 }
