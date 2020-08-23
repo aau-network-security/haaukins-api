@@ -2,8 +2,10 @@ package app
 
 import (
 	"encoding/json"
+	b64 "encoding/base64"
 	"fmt"
 	"net/http"
+	"text/template"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -12,20 +14,62 @@ import (
 const (
 	requestedChallenges = "challenges"
 	sessionCookie       = "haaukins_session"
+
+	errorChallengesTag = "Challenges Tag not found"
+	errorCreateToken   = "Error creating session token"
+	errorGetToken      = "Error getting session token"
+	errorGetClient     = "Error getting client"
+	errorCreateEnv     = "Error creating the environment"
+	errorGetCR         = "Error getting the environment"
+
+	errorAPIRequests    = "API reached the maximum number of requests it can handles"
+	errorClientRequests = "You reached the maximum number of requests you can make"
 )
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m := http.NewServeMux()
-	m.HandleFunc("/api/", lm.request(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
+	m.HandleFunc("/", lm.handleIndex())
+	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
 	m.HandleFunc("/admin/envs/", lm.listEnvs())
 	m.HandleFunc("/guacamole/", lm.proxyHandler())
+	m.HandleFunc("/challengesFrontend", lm.handleFrontendChallengesRequest())
+
+	m.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("resources/public"))))
+
 	return m
 }
 
-//Checks if the requested challenges exists and if the API can handle one more request
-func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
+func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
+	tmpl, err := template.ParseFiles(
+		"resources/private/base.tmpl.html",
+		"resources/private/index.tmpl.html",
+	)
+	if err != nil {
+		log.Error().Msgf("error index tmpl: %s", err.Error())
+	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			notFoundPage(w, r)
+			return
+		}
+
+		if err := tmpl.Execute(w, nil); err != nil {
+			http.NotFound(w, r)
+			log.Error().Msgf("template err index:: %s", err.Error())
+		}
+	}
+}
+
+//Checks if the requested challenges exists and if the API can handle one more request
+func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		if r.URL.Path != "/api/" {
+			notFoundPage(w, r)
+			return
+		}
 
 		// No need to sanitize the url requested
 		//https://stackoverflow.com/questions/23285364/does-go-sanitize-urls-for-web-requests
@@ -34,16 +78,39 @@ func (lm *LearningMaterialAPI) request(next http.Handler) http.HandlerFunc {
 
 		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest) //todo make 404 not found page
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write([]byte(badRequestHTMLTemplate))
+			errorPage(w, r, http.StatusBadRequest, returnError{
+				Content:         errorChallengesTag,
+				Toomanyrequests: false,
+			})
 			return
 		}
 
 		//Check if the API can handle another request
 		if len(lm.ClientRequestStore.GetAllRequests()) > lm.conf.API.TotalMaxRequest {
-			TooManyRequests(w) //todo create maxrequest error page
+			log.Info().Msg("API reached the maximum number of requests it can handles")
+			errorPage(w, r, http.StatusServiceUnavailable, returnError{
+				Content:         errorAPIRequests,
+				Toomanyrequests: true,
+			})
 			return
+		}
+
+		if lm.conf.API.Captcha.Enabled {
+			chalsEncoded := b64.StdEncoding.EncodeToString([]byte(r.URL.Query().Get(requestedChallenges)))
+			_, err = r.Cookie(chalsEncoded)
+			if err != nil {
+				isValid := lm.captcha.Verify(r.FormValue("g-recaptcha-response"))
+				if !isValid {
+					formActionURL := fmt.Sprintf("/api/?%s=%s", requestedChallenges, r.URL.Query().Get(requestedChallenges))
+
+					w.WriteHeader(http.StatusBadRequest) //todo make 404 not found page
+					w.Header().Set("Content-Type", "text/html; charset=utf-8")
+					_, _ = w.Write([]byte(getCaptchaPage(formActionURL, lm.conf.API.Captcha.SiteKey)))
+					return
+				}
+				authC := http.Cookie{Name: chalsEncoded, Value: r.FormValue("g-recaptcha-response"), Path: "/", MaxAge: 200}
+				http.SetCookie(w, &authC)
+			}
 		}
 
 		next.ServeHTTP(w, r)
@@ -65,7 +132,11 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 
 			token, err := client.CreateToken(lm.conf.API.SignKey)
 			if err != nil {
-				ErrorResponse(w)
+				log.Error().Msgf("Error creating session token: %v", err)
+				errorPage(w, r, http.StatusInternalServerError, returnError{
+					Content:         errorCreateToken,
+					Toomanyrequests: false,
+				})
 				return
 			}
 			go lm.CreateEnvironment(client, r.URL.Query().Get(requestedChallenges))
@@ -91,12 +162,20 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		cookie, _ := r.Cookie(sessionCookie)
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
 		if err != nil { //Error getting the client ID from cookie
-			ErrorResponse(w)
+			log.Error().Msgf("Error getting session token: %v", err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetToken,
+				Toomanyrequests: false,
+			})
 			return
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
 		if err != nil { //Error getting Client
-			ErrorResponse(w)
+			log.Error().Msgf("Error getting client [%s]: %v", clientID, err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetClient,
+				Toomanyrequests: false,
+			})
 			return
 		}
 		cr, err := client.GetClientRequest(chals)
@@ -104,7 +183,11 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		//Create a new Environment
 		if err != nil {
 			if client.RequestMade() >= lm.conf.API.ClientMaxRequest {
-				ClientTooManyRequests(w) //todo create maxrequest error page
+				log.Debug().Msgf("Client [%s] has reached max number of requests", clientID)
+				errorPage(w, r, http.StatusTooManyRequests, returnError{
+					Content:         errorClientRequests,
+					Toomanyrequests: true,
+				})
 				return
 			}
 			go lm.CreateEnvironment(client, chals)
@@ -115,7 +198,11 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		//Check for error while creating the environment
 		select {
 		case err = <-cr.err:
-			ErrorResponse(w)
+			log.Error().Msgf("Error while creating the environment: %v", err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorCreateEnv,
+				Toomanyrequests: false,
+			})
 			return
 		default:
 		}
@@ -157,7 +244,9 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 		go cr.NewError(err)
 		log.Error().Msg("Error while assigning the environment to the client")
 		err := env.Close()
-		log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
+		if err != nil {
+			log.Error().Msgf("Error closing the environment through timer, assign function: %s", err.Error())
+		}
 		return
 	}
 
@@ -166,7 +255,9 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 		<-env.GetTimer().C
 		client.RemoveClientRequest(chals)
 		err := env.Close()
-		log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
+		if err != nil {
+			log.Error().Msgf("Error closing the environment through timer: %s", err.Error())
+		}
 	}()
 
 }

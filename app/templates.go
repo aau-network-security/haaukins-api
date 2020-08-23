@@ -1,5 +1,7 @@
 package app
 
+import "fmt"
+
 const waitingHTMLTemplate = `
 <html lang="en" dir="ltr">
 		  <meta http-equiv="refresh" content="10" />
@@ -115,27 +117,38 @@ Virtualized Environment
 </html>
 `
 
-//todo change the templates
-const badRequestHTMLTemplate = `
-<html lang="en" dir="ltr">
-  <body>
-	bad request
-  </body>
-</html>
-`
-
-const errorHTMLTemplate = `
-<html lang="en" dir="ltr">
-  <body>
-	internal error
-  </body>
-</html>
-`
-
-const tooManyRequestsHTMLTemplate = `
-<html lang="en" dir="ltr">
-  <body>
-	too many requests
-  </body>
-</html>
-`
+func getCaptchaPage(formActionURL, siteKey string) string {
+	return fmt.Sprintf(`
+		<html>
+		  <head>
+			<title>Haaukins API</title>
+			<style>
+				body {
+					position: relative;
+				}
+				#myForm {
+					position: absolute;
+					top: 100px;
+					left: %s;
+					transform: translate(-%s, %s);
+					text-align: center;
+				}
+				.g-recaptcha {
+					display: inline-block;
+				}
+			</style>
+			<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+		  </head>
+		  <body>
+			<form action="%s" method="POST" id="myForm">
+			  <div class="g-recaptcha" data-sitekey="%s" data-callback="verifyCaptcha"></div>
+			  <br/>
+			</form>
+			<script>
+				function verifyCaptcha() {
+					document.getElementById("myForm").submit();
+				}
+			</script>
+		  </body>
+		</html>	`, "50%", "50%", "50%", formActionURL, siteKey)
+}

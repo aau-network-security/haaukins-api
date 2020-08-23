@@ -5,7 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/rs/zerolog"
 
@@ -43,6 +46,11 @@ func getTestConfig(totalR, clientR int) *app.Config {
 				Username: whatever,
 				Password: whatever,
 			},
+			Captcha: struct {
+				Enabled   bool   `yaml:"enabled"`
+				SiteKey   string `yaml:"site-key"`
+				SecretKey string `yaml:"secret-key"`
+			}{Enabled: false},
 			TotalMaxRequest:  totalR,
 			ClientMaxRequest: clientR,
 		},
@@ -246,4 +254,37 @@ func TestAPIRequests(t *testing.T) {
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("Status code Error. Expected [%d], got [%d]", http.StatusServiceUnavailable, resp.StatusCode)
 	}
+}
+
+func TestFrontendRequest(t *testing.T) {
+	config := getTestConfig(5, 2)
+
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting the working directory: %s", err.Error())
+	}
+	config.ExercisesFile = dir + "/exercises_test.yml"
+
+	lm, err := app.New(config)
+	if err != nil {
+		t.Fatalf("Error Creating API : %s", err.Error())
+	}
+
+	ts := httptest.NewServer(lm.Handler())
+
+	wsUrl := fmt.Sprintf("%s/challengesFrontend", strings.Replace(ts.URL, "http", "ws", 1))
+	c, _, err := websocket.DefaultDialer.Dial(wsUrl, nil)
+	if err != nil {
+		t.Fatalf("Error WS: %s", err.Error())
+	}
+
+	_, resp, err := c.ReadMessage()
+	if err != nil {
+		t.Fatalf("Error getting challenges from frontend: %s", err.Error())
+	}
+
+	if `{"msg":"challenges_categories","values":null}` != string(resp) {
+		t.Fatal("WS response doesn't match")
+	}
+	c.Close()
 }
