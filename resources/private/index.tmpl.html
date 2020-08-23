@@ -1,0 +1,57 @@
+{{ define "content" }}
+    <div id="index_content">
+        <p class="text-justify">
+            Fast and Easy access to Kali Linux Machine from your browser, what are you waiting for? Select at the least a challenge
+            and create your <strong>Environment</strong>, in about a minute* you will be redirected to a page in which you
+            can play with the selected challenges. Remember you have no Internet Access in your Kali Linux Machine.
+        </p>
+        <div class="row justify-content-md-center mt-3 text-center">
+            <div class="col-12 col-md-4">
+                <p><strong>Client Max Request: </strong><span class="aau-color">4</span></p>
+            </div>
+            <div class="col-12 col-md-4">
+                <p><strong>Environment Timeout**: </strong><span class="aau-color">45 min.</span></p>
+            </div>
+        </div>
+        <form class="mt-4">
+            <div class="form-actions mb-3">
+                <button type="button" id="api_request" class="btn btn-lg btn-aau-sec text-center">Launch Environment</button>
+            </div>
+            <div class="d-inline-block p-2">
+                <h5>Select your challenges</h5>
+            </div>
+            <div class="d-inline-block p-2 float-right">
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="checkbox_select_all" onclick="selectAllChallenges(this)">
+                    <label class="custom-control-label" for="checkbox_select_all">Select All*</label>
+                </div>
+            </div>
+            <div class="challenges-fiels p-3 mt-2" id="chals_field">
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="nav flex-column nav-pills sticky-top" id="challenges-category-nav" role="tablist" aria-orientation="vertical">
+                        </div>
+                    </div>
+                    <div class="col-md-8 p-4 p-md-0 mt-3 mt-md-0">
+                        <div class="tab-content" id="challenges-tab">
+                            <div class="tab-pane fade active show" id="webexploitation" role="tabpanel" aria-labelledby="webexploitation-tab">
+                            </div>
+                            <div class="tab-pane fade" id="forensics" role="tabpanel" aria-labelledby="forensics-tab">
+                            </div>
+                            <div class="tab-pane fade" id="binary" role="tabpanel" aria-labelledby="binary-tab">
+                            </div>
+                            <div class="tab-pane fade" id="reverseengineering" role="tabpanel" aria-labelledby="reverseengineering-tab">
+                            </div>
+                            <div class="tab-pane fade" id="cryptography" role="tabpanel" aria-labelledby="cryptography-tab">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+        <p>* More challenges you select, more time the API needs to create the Environment</p>
+        <p>** The Environment will be shut down automatically</p>
+    </div>
+{{ end }}

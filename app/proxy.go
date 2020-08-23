@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+
+	"github.com/rs/zerolog/log"
 )
 
 //Handle the request made to `/guacamole/`, it forwards the request to guacamole instance
@@ -24,18 +26,30 @@ func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 
 		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
 		if err != nil { //Error getting the client ID from cookie
-			ErrorResponse(w)
+			log.Error().Msgf("Proxy Error getting session token: %v", err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetToken,
+				Toomanyrequests: false,
+			})
 			return
 		}
 		client, err := lm.ClientRequestStore.GetClient(clientID)
 		if err != nil { //Error getting Client
-			ErrorResponse(w)
+			log.Error().Msgf("Proxy Error getting client [%s]: %v", clientID, err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetClient,
+				Toomanyrequests: false,
+			})
 			return
 		}
 
 		cc, err := client.GetClientRequest(challengesTag)
 		if err != nil {
-			ErrorResponse(w)
+			log.Error().Msgf("Proxy Error getting client request [%s]: %v", challengesTag, err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetCR,
+				Toomanyrequests: false,
+			})
 			return
 		}
 

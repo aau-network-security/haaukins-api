@@ -117,31 +117,6 @@ Virtualized Environment
 </html>
 `
 
-//todo change the templates
-const badRequestHTMLTemplate = `
-<html lang="en" dir="ltr">
-  <body>
-	bad request
-  </body>
-</html>
-`
-
-const errorHTMLTemplate = `
-<html lang="en" dir="ltr">
-  <body>
-	internal error
-  </body>
-</html>
-`
-
-const tooManyRequestsHTMLTemplate = `
-<html lang="en" dir="ltr">
-  <body>
-	too many requests
-  </body>
-</html>
-`
-
 func getCaptchaPage(formActionURL, siteKey string) string {
 	return fmt.Sprintf(`
 		<html>
