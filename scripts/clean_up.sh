@@ -17,9 +17,5 @@ VBoxManage list runningvms | awk '{print $2;}' | xargs -I vmid VBoxManage contro
 ## Unregister VMs ID
 VBoxManage list vms | awk '{print $2;}' | xargs -I vmid VBoxManage unregistervm --delete vmid
 
-
-# Cleanup previously imported VMDKs path
-rm -rf /home/gian/Documents/haaukins_files/vmdks/*
-
 # clean up cache
 sync; echo 3 > /proc/sys/vm/drop_caches
