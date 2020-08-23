@@ -215,6 +215,7 @@ func (lm *LearningMaterialAPI) listEnvs() http.HandlerFunc {
 			return
 		}
 
+		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonLE)
 	}
