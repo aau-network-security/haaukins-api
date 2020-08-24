@@ -1,8 +1,9 @@
 package app
 
 import (
-	"encoding/json"
 	b64 "encoding/base64"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"text/template"
@@ -14,6 +15,7 @@ import (
 const (
 	requestedChallenges = "challenges"
 	sessionCookie       = "haaukins_session"
+	timeFormat          = "2006-01-02 15:04:05"
 
 	errorChallengesTag = "Challenges Tag not found"
 	errorCreateToken   = "Error creating session token"
@@ -103,7 +105,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 				if !isValid {
 					formActionURL := fmt.Sprintf("/api/?%s=%s", requestedChallenges, r.URL.Query().Get(requestedChallenges))
 
-					w.WriteHeader(http.StatusBadRequest) //todo make 404 not found page
+					w.WriteHeader(http.StatusBadRequest)
 					w.Header().Set("Content-Type", "text/html; charset=utf-8")
 					_, _ = w.Write([]byte(getCaptchaPage(formActionURL, lm.conf.API.Captcha.SiteKey)))
 					return
@@ -203,6 +205,8 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 				Content:         errorCreateEnv,
 				Toomanyrequests: false,
 			})
+			fw := csv.NewWriter(lm.storeFile)
+			writeToCSVFile(fw, []string{time.Now().Format(timeFormat), clientID, client.Host(), chals, err.Error()})
 			return
 		default:
 		}
@@ -214,6 +218,8 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		}
 
 		log.Info().Msgf("[READY] Client Request [%s] for the client [%s]", chals, client.ID())
+		fw := csv.NewWriter(lm.storeFile)
+		writeToCSVFile(fw, []string{time.Now().Format(timeFormat), clientID, client.Host(), chals, ""})
 
 		authC := http.Cookie{Name: "GUAC_AUTH", Value: cr.guacCookie, Path: "/guacamole/"}
 		http.SetCookie(w, &authC)

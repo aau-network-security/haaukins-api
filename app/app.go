@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/rs/zerolog/log"
 
@@ -14,11 +15,12 @@ import (
 type LearningMaterialAPI struct {
 	conf *Config
 	ClientRequestStore
-	captcha  Recaptcha
-	exStore  store.ExerciseStore
-	vlib     vbox.Library
-	frontend []store.InstanceConfig
-	closers  []io.Closer
+	captcha   Recaptcha
+	exStore   store.ExerciseStore
+	vlib      vbox.Library
+	frontend  []store.InstanceConfig
+	storeFile *os.File
+	closers   []io.Closer
 }
 
 func New(conf *Config) (*LearningMaterialAPI, error) {
@@ -34,6 +36,8 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 	}
 	crs := NewClientRequestStore()
 
+	sf, err := os.OpenFile(conf.API.StoreFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+
 	return &LearningMaterialAPI{
 		conf:               conf,
 		ClientRequestStore: crs,
@@ -41,15 +45,15 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 		exStore:            ef,
 		vlib:               vlib,
 		frontend:           frontends,
-		closers:            []io.Closer{crs},
+		storeFile:          sf,
+		closers:            []io.Closer{crs, sf},
 	}, nil
 }
 
 func (lm *LearningMaterialAPI) Run() {
-	//todo put the logs about the api is running on TLS or not
-	//
 	log.Info().Msg("API ready to get requests")
 	if lm.conf.TLS.Enabled {
+		log.Info().Msgf("API running in SECURE mode under port: %d", lm.conf.Port.Secure)
 		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", lm.conf.Port.Secure), lm.conf.TLS.CertFile, lm.conf.TLS.CertKey, lm.Handler()); err != nil {
 			log.Warn().Msgf("Serving error: %s", err)
 		}

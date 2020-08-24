@@ -48,6 +48,7 @@ type APIConfig struct {
 		Image  string `yaml:"image"`
 		Memory uint   `yaml:"memory"`
 	} `yaml:"frontend"`
+	StoreFile string `yaml:"store-file"`
 }
 
 func NewConfigFromFile(path string) (*Config, error) {
