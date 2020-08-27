@@ -3,58 +3,58 @@
 Haaukins API allows the user to connect directly Kali Linux VM avoiding normal Haaukins steps. Unlike Haaukins, in which
 you need to have an event up and running in order to sign up and connect Kali Linux VM, on the API you just need to select
 the challenges you want to have in your Environment and run it. In almost a minute the environment will be ready and the 
-user will be automatically redirect to Guacamole that render the Kali linux VM.
+user will be automatically redirect to Guacamole which creates RDP connection through browser to Kali Linux VM.
 
 ### Keywords used on this repository
-- Client: Identify (through session cookie containing an ID) who made the request on the API
-- Environment: Identify the challenges requested from the Client. It contantains a guacamole instance, a lab and a timer.
-- Challenges: They are Haaukins Exercises
+- **Client**: Identify (through session cookie containing an ID) who made the request on the API
+- **Environment**: Identify the challenges requested from the Client. It contantains a guacamole instance, a lab and a timer.
+- **Challenges**: They are Haaukins Exercises
 
 The relation in between those 3 keywords is the following 
 > Client 1 ----> N Environment 1 ----> M Challenges
 
 ### API implementation
-The API has some constrains in order to don't create too many Environment and 
-- the API has a Max amount of requests that can handle (specify the value on the config file)
-- a Client has a Max amount of requests that can make
-- the Environment will be closed after 45 minutes it has been created thanks the timer.
+The API has some constrains in order to don't create too many **Environments** and 
+- the API has a maximum amount of requests that can handle (specified on the config file)
+- a **Client** has a maximum amount of requests that can make (specified on the config file)
+- the **Environment** will destroy itself after specified amount of time in source code
 
-In case a Client or the API reached the Max amount of request, the Clients have to wait that at the least an Environment
-will be closed in order to make another request
+In case either a **Client** or the API reached the maximum amount of request, another request cannot be handled, therefore an 
+error page will be showed. In case the next users have to wait that at the least one **Environment** will destroy itself.
 
 ### Configuration file
-the API needs a configuration file in order to works. It should look like the following:
+Example API configuration file: 
 ```yaml
 host: # host
 port:
   insecure: 80
   secure: 443
-tls: # certificates absolute path
+tls: 
   enabled: true
-  certfile: 
-  certkey: 
-  cafile: 
+  certfile: # certificates absolute path
+  certkey: # certificates absolute path
+  cafile: # certificates absolute path
 exercises-file: # string, absolute path to the exercise.yml file
 ova-dir: # directory where to pull the .ova images
 api:
-  sign-key: # sign key for the session cookie
-  admin: # basic auth in order to get the list of Environment running
-    username: 
-    password: 
-  captcha: # re-captcha information
+  sign-key: whatever
+  admin:
+    username: whatever
+    password: whatever
+  captcha: 
     enabled: true
-    site-key: 
-    secret-key: 
-  total-max-requests: # int, number of request the API can handle
-  client-max-requests: # int, number request a client can make
+    site-key: whatever # captcha site key
+    secret-key: whatever # captcha secret key
+  total-max-requests: 20 # int, number of request the API can handle
+  client-max-requests: 4 # int, number request a client can make
   frontend:
     image: kali
     memory: 4096
-  store-file: # string, .csv file where to store the requests 
-docker-repositories: # Gitlab registry
-  - username: 
-    password: 
-    serveraddress: 
+  store-file: whatever.csv # certificates absolute path of .csv file where to store the requests 
+docker-repositories: 
+  - username: whatever # registry username
+    password: whatever # registry password
+    serveraddress: registry.gitlab.com
 ```
 
 ### How it works (for developers)
