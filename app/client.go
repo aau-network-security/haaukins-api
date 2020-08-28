@@ -201,5 +201,5 @@ func (c *client) Host() string {
 func (c *client) RequestMade() int {
 	c.m.RLock()
 	defer c.m.RUnlock()
-	return len(c.requests) //todo check it works
+	return len(c.requests)
 }

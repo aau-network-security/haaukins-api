@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/csv"
 	"fmt"
 	"io"
 	"net/http"
@@ -91,6 +92,14 @@ func GetTokenFromCookie(token, key string) (string, error) {
 		return "", ErrInvalidTokenFormat
 	}
 	return id, nil
+}
+
+func writeToCSVFile(w *csv.Writer, info []string) {
+	if err := w.Write(info); err != nil {
+		log.Error().Msgf("Error writing the CSV File %v", err)
+		return
+	}
+	w.Flush()
 }
 
 func notFoundPage(w http.ResponseWriter, r *http.Request) {
