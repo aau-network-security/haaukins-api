@@ -1,11 +1,11 @@
 {{ define "content" }}
-    <div id="error_content">
+    <div class="container custom-margin-top px-lg-5">
         <div class="row mt-5">
             <div class="col-md-12 text-center">
                 {{ if .Toomanyrequests}}
-                    <img src="/assets/img/requests.svg" class="img-fluid" width="500">
+                    <img src="/assets/img/requests.svg" class="img-fluid" width="700" height="700">
                 {{ else }}
-                    <img src="/assets/img/error.svg" class="img-fluid" width="500">
+                    <img src="/assets/img/error.svg" class="img-fluid" width="700" height="700">
                 {{ end }}
                 <h3 class="text-center mt-3">Oops... Something went wrong!</h3>
                 <p class="error-page-color">{{ .Content }}</p>

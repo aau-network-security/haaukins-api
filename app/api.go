@@ -1,7 +1,6 @@
 package app
 
 import (
-	b64 "encoding/base64"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 const (
 	requestedChallenges = "challenges"
 	sessionCookie       = "haaukins_session"
+	sessionChal         = "chals"
 	timeFormat          = "2006-01-02 15:04:05"
 
 	errorChallengesTag = "Challenges Tag not found"
@@ -98,8 +98,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 		}
 
 		if lm.conf.API.Captcha.Enabled {
-			chalsEncoded := b64.StdEncoding.EncodeToString([]byte(r.URL.Query().Get(requestedChallenges)))
-			_, err = r.Cookie(chalsEncoded)
+			_, err = r.Cookie(sessionChal)
 			if err != nil {
 				isValid := lm.captcha.Verify(r.FormValue("g-recaptcha-response"))
 				if !isValid {
@@ -110,7 +109,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 					_, _ = w.Write([]byte(getCaptchaPage(formActionURL, lm.conf.API.Captcha.SiteKey)))
 					return
 				}
-				authC := http.Cookie{Name: chalsEncoded, Value: r.FormValue("g-recaptcha-response"), Path: "/", MaxAge: 200}
+				authC := http.Cookie{Name: sessionChal, Value: r.FormValue("g-recaptcha-response"), Path: "/", MaxAge: 200}
 				http.SetCookie(w, &authC)
 			}
 		}
@@ -224,7 +223,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		authC := http.Cookie{Name: "GUAC_AUTH", Value: cr.guacCookie, Path: "/guacamole/"}
 		http.SetCookie(w, &authC)
 		host := fmt.Sprintf("/guacamole/?%s=%s", requestedChallenges, chals)
-		time.Sleep(5 * time.Second) //wait a little bit more in order to boot kali linux
+		time.Sleep(12 * time.Second) //wait a little bit more in order to boot kali linux
 		http.Redirect(w, r, host, http.StatusFound)
 	}
 }
