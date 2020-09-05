@@ -68,7 +68,7 @@ func TestCorrectRequests(t *testing.T) {
 	}
 	config.ExercisesFile = dir + "/exercises_test.yml"
 
-	lm, err := app.New(config)
+	lm, err := app.New(config, true)
 
 	if err != nil {
 		t.Fatalf("Error Creating API : %s", err.Error())
@@ -120,7 +120,7 @@ func TestAdminRequests(t *testing.T) {
 	}
 	config.ExercisesFile = dir + "/exercises_test.yml"
 
-	lm, err := app.New(config)
+	lm, err := app.New(config, true)
 
 	if err != nil {
 		t.Fatalf("Error Creating API : %s", err.Error())
@@ -176,7 +176,7 @@ func TestClientRequests(t *testing.T) {
 	}
 	config.ExercisesFile = dir + "/exercises_test.yml"
 
-	lm, err := app.New(config)
+	lm, err := app.New(config, true)
 	if err != nil {
 		t.Fatalf("Error Creating API : %s", err.Error())
 	}
@@ -218,7 +218,7 @@ func TestAPIRequests(t *testing.T) {
 	}
 	config.ExercisesFile = dir + "/exercises_test.yml"
 
-	lm, err := app.New(config)
+	lm, err := app.New(config, true)
 	if err != nil {
 		t.Fatalf("Error Creating API : %s", err.Error())
 	}
@@ -265,7 +265,7 @@ func TestFrontendRequest(t *testing.T) {
 	}
 	config.ExercisesFile = dir + "/exercises_test.yml"
 
-	lm, err := app.New(config)
+	lm, err := app.New(config, true)
 	if err != nil {
 		t.Fatalf("Error Creating API : %s", err.Error())
 	}

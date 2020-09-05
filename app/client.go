@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -154,11 +155,16 @@ func (c *client) GetAllClientRequests() []*ClientRequest {
 
 }
 
+func createClientRequestID(clientID, chals string) string {
+	return fmt.Sprintf("%s--%s", clientID, chals)
+}
+
 func (c *client) NewClientRequest(chals string) *ClientRequest {
 	c.m.Lock()
 	defer c.m.Unlock()
 
 	cc := &ClientRequest{
+		id:      createClientRequestID(c.id, chals),
 		isReady: false,
 		err:     make(chan error, 0),
 	}
@@ -175,15 +181,18 @@ func (c *client) RemoveClientRequest(chals string) {
 }
 
 type ClientRequest struct {
-	isReady    bool
-	err        chan error
-	env        Environment
-	guacCookie string
-	guacPort   uint
+	id      string
+	isReady bool
+	err     chan error
+	env     Environment
 }
 
 func (cr *ClientRequest) NewError(e error) {
 	cr.err <- e
+}
+
+func (cr *ClientRequest) ID() string {
+	return cr.id
 }
 
 func (c *client) ID() string {

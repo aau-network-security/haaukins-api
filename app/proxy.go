@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -12,48 +13,9 @@ import (
 //Handle the request made to `/guacamole/`, it forwards the request to guacamole instance
 func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 
-	challengesTag := ""
-
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		rChallenges := r.URL.Query().Get(requestedChallenges)
-		// Get the requested challenges from the URL, the value change everytime a new ENV is requested
-		if rChallenges != "" {
-			challengesTag = rChallenges
-		}
-
-		cookie, _ := r.Cookie(sessionCookie)
-
-		clientID, err := GetTokenFromCookie(cookie.Value, lm.conf.API.SignKey)
-		if err != nil { //Error getting the client ID from cookie
-			log.Error().Msgf("Proxy Error getting session token: %v", err)
-			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetToken,
-				Toomanyrequests: false,
-			})
-			return
-		}
-		client, err := lm.ClientRequestStore.GetClient(clientID)
-		if err != nil { //Error getting Client
-			log.Error().Msgf("Proxy Error getting client [%s]: %v", clientID, err)
-			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetClient,
-				Toomanyrequests: false,
-			})
-			return
-		}
-
-		cc, err := client.GetClientRequest(challengesTag)
-		if err != nil {
-			log.Error().Msgf("Proxy Error getting client request [%s]: %v", challengesTag, err)
-			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetCR,
-				Toomanyrequests: false,
-			})
-			return
-		}
-
-		baseURL := fmt.Sprintf("http://localhost:%d/guacamole/", cc.guacPort)
+		baseURL := fmt.Sprintf("http://localhost:%d/guacamole/", lm.guacamole.GetPort())
 		origin, _ := url.Parse(baseURL)
 
 		director := func(req *http.Request) {
@@ -65,5 +27,43 @@ func (lm *LearningMaterialAPI) proxyHandler() http.HandlerFunc {
 
 		proxy := &httputil.ReverseProxy{Director: director}
 		proxy.ServeHTTP(w, r)
+	}
+}
+
+//Handle the request made to `/guaclogin/`, it redirects the request to proxyHandler instance
+func (lm *LearningMaterialAPI) guacLogin() http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		rChallenges := r.URL.Query().Get(requestedChallenges)
+		clientCookie, _ := r.Cookie(sessionCookie)
+
+		clientID, err := GetTokenFromCookie(clientCookie.Value, lm.conf.API.SignKey)
+		if err != nil { //Error getting the client ID from cookie
+			log.Error().Msgf("Error getting session token: %v", err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetToken,
+				Toomanyrequests: false,
+			})
+			return
+		}
+
+		crID := createClientRequestID(clientID, rChallenges)
+		content, err := lm.guacamole.RawLogin(crID, crID)
+		if err != nil {
+			log.Error().Msgf("Unable to login guacamole [%s]: %v", crID, err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetCR,
+				Toomanyrequests: false,
+			})
+			return
+		}
+		guacLoginCookie := url.QueryEscape(string(content))
+
+		authC := http.Cookie{Name: "GUAC_AUTH", Value: guacLoginCookie, Path: "/guacamole/"}
+		http.SetCookie(w, &authC)
+		time.Sleep(10 * time.Second) //wait a little bit more in order to boot kali linux
+		host := fmt.Sprintf("/guacamole/?%s=%s", requestedChallenges, rChallenges)
+		http.Redirect(w, r, host, http.StatusFound)
 	}
 }

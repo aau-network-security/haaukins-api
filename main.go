@@ -43,7 +43,7 @@ func main() {
 		return
 	}
 
-	api, err := app.New(c)
+	api, err := app.New(c, false)
 	if err != nil {
 		log.Error().Msgf("unable to create API: %s\n", err)
 		return

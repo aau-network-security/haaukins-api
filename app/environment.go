@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -22,7 +21,6 @@ type environment struct {
 	challenges []store.Tag
 	lab        hlab.Lab
 	guacamole  guacamole.Guacamole
-	guacPort   uint
 }
 
 type Environment interface {
@@ -48,17 +46,6 @@ func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environme
 		Conf: labConf,
 	}
 
-	guac, err := guacamole.New(ctx, guacamole.Config{})
-	if err != nil {
-		log.Error().Msgf("Error while creating new guacamole %s", err.Error())
-		return nil, err
-	}
-
-	if err := guac.Start(ctx); err != nil {
-		log.Error().Msgf("Error while starting guacamole %s", err.Error())
-		return nil, err
-	}
-
 	lab, err := lh.NewLab(ctx)
 	if err != nil {
 		log.Error().Msgf("Error while creating new lab %s", err.Error())
@@ -74,8 +61,7 @@ func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environme
 		timer:      time.NewTimer(environmentTimer),
 		challenges: challenges,
 		lab:        lab,
-		guacamole:  guac,
-		guacPort:   guac.GetPort(),
+		guacamole:  lm.guacamole,
 	}
 
 	return env, nil
@@ -84,7 +70,11 @@ func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environme
 //Assign the environment to the client
 func (e *environment) Assign(client Client, chals string) error {
 
-	clientID := client.ID()
+	cr, err := client.GetClientRequest(chals)
+	if err != nil {
+		return errors.New("client request not found")
+	}
+
 	rdpPorts := e.lab.RdpConnPorts()
 	if n := len(rdpPorts); n == 0 {
 		log.
@@ -96,8 +86,8 @@ func (e *environment) Assign(client Client, chals string) error {
 	}
 
 	u := guacamole.GuacUser{
-		Username: clientID,
-		Password: clientID,
+		Username: cr.ID(),
+		Password: cr.ID(),
 	}
 
 	if err := e.guacamole.CreateUser(u.Username, u.Password); err != nil {
@@ -116,9 +106,9 @@ func (e *environment) Assign(client Client, chals string) error {
 
 	for i, port := range rdpPorts {
 		num := i + 1
-		name := fmt.Sprintf("%s-client%d", clientID, num)
+		name := fmt.Sprintf("%s-client%d", cr.ID(), num)
 
-		log.Debug().Str("client", clientID).Uint("port", port).Msg("Creating RDP Connection for group")
+		log.Debug().Str("client", cr.ID()).Uint("port", port).Msg("Creating RDP Connection for group")
 		if err := e.guacamole.CreateRDPConn(guacamole.CreateRDPConnOpts{
 			Host:     hostIp,
 			Port:     port,
@@ -131,23 +121,7 @@ func (e *environment) Assign(client Client, chals string) error {
 		}
 	}
 
-	content, err := e.guacamole.RawLogin(clientID, clientID)
-	if err != nil {
-		log.
-			Debug().
-			Str("err", err.Error()).
-			Msg("Unable to login to guacamole")
-		return err
-	}
-	cookie := url.QueryEscape(string(content))
-
-	cr, err := client.GetClientRequest(chals)
-	if err != nil {
-		return errors.New("client request not found")
-	}
 	cr.env = e
-	cr.guacPort = e.guacPort
-	cr.guacCookie = cookie
 	cr.isReady = true
 
 	return nil
