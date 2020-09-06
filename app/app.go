@@ -1,10 +1,13 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/aau-network-security/haaukins/svcs/guacamole"
 
 	"github.com/rs/zerolog/log"
 
@@ -21,9 +24,10 @@ type LearningMaterialAPI struct {
 	frontend  []store.InstanceConfig
 	storeFile *os.File
 	closers   []io.Closer
+	guacamole guacamole.Guacamole
 }
 
-func New(conf *Config) (*LearningMaterialAPI, error) {
+func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 
 	vlib := vbox.NewLibrary(conf.OvaDir)
 	frontends := []store.InstanceConfig{{
@@ -38,6 +42,21 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 
 	sf, err := os.OpenFile(conf.API.StoreFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
+	var guac guacamole.Guacamole
+	if !isTest {
+		ctx := context.Background()
+		guac, err = guacamole.New(ctx, guacamole.Config{})
+		if err != nil {
+			log.Error().Msgf("Error while creating new guacamole %s", err.Error())
+			return nil, err
+		}
+
+		if err := guac.Start(ctx); err != nil {
+			log.Error().Msgf("Error while starting guacamole %s", err.Error())
+			return nil, err
+		}
+	}
+
 	return &LearningMaterialAPI{
 		conf:               conf,
 		ClientRequestStore: crs,
@@ -46,7 +65,8 @@ func New(conf *Config) (*LearningMaterialAPI, error) {
 		vlib:               vlib,
 		frontend:           frontends,
 		storeFile:          sf,
-		closers:            []io.Closer{crs, sf},
+		closers:            []io.Closer{crs, sf, guac},
+		guacamole:          guac,
 	}, nil
 }
 
@@ -59,6 +79,7 @@ func (lm *LearningMaterialAPI) Run() {
 		}
 		return
 	}
+	log.Info().Msgf("API running under port: %d", lm.conf.Port.InSecure)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", lm.conf.Port.InSecure), lm.Handler()); err != nil {
 		log.Warn().Msgf("Serving error: %s", err)
 	}

@@ -33,6 +33,7 @@ func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m.HandleFunc("/", lm.handleIndex())
 	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
 	m.HandleFunc("/admin/envs/", lm.listEnvs())
+	m.HandleFunc("/guaclogin/", lm.guacLogin())
 	m.HandleFunc("/guacamole/", lm.proxyHandler())
 	m.HandleFunc("/challengesFrontend", lm.handleFrontendChallengesRequest())
 
@@ -129,7 +130,7 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 		if err != nil {
 
 			client := lm.ClientRequestStore.NewClient(r.Host)
-			log.Info().Msgf("Create new Client [%s]", client.ID())
+			log.Info().Str("client", client.ID()).Msg("Create new Client")
 
 			token, err := client.CreateToken(lm.conf.API.SignKey)
 			if err != nil {
@@ -220,10 +221,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		fw := csv.NewWriter(lm.storeFile)
 		writeToCSVFile(fw, []string{time.Now().Format(timeFormat), clientID, client.Host(), chals, ""})
 
-		authC := http.Cookie{Name: "GUAC_AUTH", Value: cr.guacCookie, Path: "/guacamole/"}
-		http.SetCookie(w, &authC)
-		host := fmt.Sprintf("/guacamole/?%s=%s", requestedChallenges, chals)
-		time.Sleep(12 * time.Second) //wait a little bit more in order to boot kali linux
+		host := fmt.Sprintf("/guaclogin/?%s=%s", requestedChallenges, chals)
 		http.Redirect(w, r, host, http.StatusFound)
 	}
 }
@@ -232,7 +230,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 //Start a go routine that triggers when the timer expires
 func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
-	log.Info().Msgf("Creating new Environment with challenges [%s] for [%s]", chals, client.ID())
+	log.Info().Str("chals", chals).Str("client", client.ID()).Msg("Creating new Environment")
 
 	cr := client.NewClientRequest(chals)
 
