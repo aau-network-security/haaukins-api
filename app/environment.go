@@ -143,6 +143,5 @@ func (e *environment) GetTimer() *time.Timer {
 
 func (e *environment) Close() error {
 	err := e.lab.Close()
-	err = e.guacamole.Close()
 	return err
 }
