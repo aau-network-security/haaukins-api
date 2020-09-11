@@ -22,6 +22,7 @@ document.getElementById("api_request").onclick = function () {
 
 window.onload = function(){
     connectToWS()
+    addBodyClass()
 }
 
 function connectToWS() {
@@ -91,4 +92,13 @@ function createChallengeCheckBox(n, challenge){
     div.appendChild(label)
 
     return div
+}
+
+function addBodyClass() {
+    const x = document.getElementsByTagName("BODY")[0];
+    if (window.location.pathname == "/"){
+        x.classList.add("home-page")
+        return
+    }
+    x.classList.add("other-page")
 }

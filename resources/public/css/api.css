@@ -15,7 +15,7 @@ body {
 
 .background-img{
     height: 100vh;
-    min-height: 70rem;
+    min-height: 30rem;
     padding-top: 4.5rem;
     padding-bottom: 0;
     background: url("/assets/img/wave-signup.png");
@@ -23,6 +23,10 @@ body {
     background-repeat: no-repeat;
     background-attachment: scroll;
     background-size: cover;
+}
+
+.home-page .background-img{
+    min-height: 70rem;
 }
 
 .footer {
@@ -55,11 +59,47 @@ main{
     top: 0;
     right: 0;
     left: 0;
-    z-index: 1050;
 }
 
 .custom-margin-top{
     margin-top: 300px;
+}
+
+#info-team{
+    position: absolute;
+    top: 17%;
+    right: 0;
+    background-color: #f76c6c;
+    border-top-left-radius: 5px!important;
+    border-bottom-left-radius: 5px!important;
+    z-index: 1030;
+}
+
+.nav-tabs a {
+    color: #211A52 !important;
+}
+
+#info-tab .nav-link.active {
+    background-color: #211A52 !important;
+    color: #fff!important;
+}
+
+#info-tab .nav-link{
+    color: #211A52;
+}
+
+.text-black{
+    color: #000000;
+}
+
+.dark-color{
+    color: #444;
+}
+
+#nav-tabContent{
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 3px;
 }
 
 /**************** NAVBAR **********************/
@@ -200,7 +240,10 @@ main{
 
 @media screen and (max-width: 576px){
     .background-img{
-        min-height: 80rem;
+        min-height: 55rem;
+    }
+    .home-page .background-img{
+        min-height: 100rem;
     }
     .brand-name {
         font-size: 2.4rem;
@@ -212,6 +255,6 @@ main{
         font-size: 0.8rem;
     }
     .custom-margin-top{
-        margin-top: 320px;
+        margin-top: 380px;
     }
 }
