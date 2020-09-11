@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -155,16 +154,12 @@ func (c *client) GetAllClientRequests() []*ClientRequest {
 
 }
 
-func createClientRequestID(clientID, chals string) string {
-	return fmt.Sprintf("%s--%s", clientID, chals)
-}
-
 func (c *client) NewClientRequest(chals string) *ClientRequest {
 	c.m.Lock()
 	defer c.m.Unlock()
 
 	cc := &ClientRequest{
-		id:      createClientRequestID(c.id, chals),
+		id:      uuid.New().String(),
 		isReady: false,
 		err:     make(chan error, 0),
 	}

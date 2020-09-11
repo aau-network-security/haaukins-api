@@ -48,10 +48,29 @@ func (lm *LearningMaterialAPI) guacLogin() http.HandlerFunc {
 			return
 		}
 
-		crID := createClientRequestID(clientID, rChallenges)
-		content, err := lm.guacamole.RawLogin(crID, crID)
+		client, err := lm.ClientRequestStore.GetClient(clientID)
+		if err != nil { //Error getting Client
+			log.Error().Msgf("Proxy Error getting client [%ds: %v", clientID, err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetClient,
+				Toomanyrequests: false,
+			})
+			return
+		}
+
+		cr, err := client.GetClientRequest(rChallenges)
 		if err != nil {
-			log.Error().Msgf("Unable to login guacamole [%s]: %v", crID, err)
+			log.Error().Msgf("Proxy Error getting client request [%s]: %v", rChallenges, err)
+			errorPage(w, r, http.StatusInternalServerError, returnError{
+				Content:         errorGetCR,
+				Toomanyrequests: false,
+			})
+			return
+		}
+
+		content, err := lm.guacamole.RawLogin(cr.ID(), cr.ID())
+		if err != nil {
+			log.Error().Msgf("Unable to login guacamole [%s]: %v", cr.ID(), err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
 				Content:         errorGetCR,
 				Toomanyrequests: false,
