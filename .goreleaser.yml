@@ -56,7 +56,7 @@ archives:
     # Defaults are any files matching `LICENCE*`, `LICENSE*`,
     # `README*` and `CHANGELOG*` (case-insensitive).
     files:
-      - LICENCE
+      - LICENSE
       - README.md
 
 checksum:
