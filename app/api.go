@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/subtle"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -26,12 +27,14 @@ const (
 
 	errorAPIRequests    = "API reached the maximum number of requests it can handles"
 	errorClientRequests = "You reached the maximum number of requests you can make"
+
+	REALM = "Enter password to use secret challenge"
 )
 
 func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("/", lm.handleIndex())
-	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment())))
+	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment()), lm.conf.SecretChallengeAuth.Username, lm.conf.SecretChallengeAuth.Password))
 	m.HandleFunc("/admin/envs/", lm.listEnvs())
 	m.HandleFunc("/guaclogin/", lm.guacLogin())
 	m.HandleFunc("/guacamole/", lm.proxyHandler())
@@ -65,8 +68,8 @@ func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 }
 
 //Checks if the requested challenges exists and if the API can handle one more request
-func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc {
-
+func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, password string) http.HandlerFunc {
+	var enableBasicAuth bool
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		if r.URL.Path != "/api/" {
@@ -77,8 +80,22 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 		// No need to sanitize the url requested
 		//https://stackoverflow.com/questions/23285364/does-go-sanitize-urls-for-web-requests
 
-		_, err := lm.GetChallengesFromRequest(r.URL.Query().Get(requestedChallenges))
+		challenges, err := lm.GetChallengesFromRequest(r.URL.Query().Get(requestedChallenges))
 
+		exercises, err := lm.exStore.GetExercisesByTags(challenges...)
+		if err != nil {
+			errorPage(w, r, http.StatusBadRequest, returnError{
+				Content:         err.Error(),
+				Toomanyrequests: false,
+			})
+			return
+		}
+		for _, e := range exercises {
+			if e.Secret {
+				enableBasicAuth = e.Secret
+				continue
+			}
+		}
 		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
 			errorPage(w, r, http.StatusBadRequest, returnError{
@@ -97,17 +114,32 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 			})
 			return
 		}
+		if enableBasicAuth {
+			user, pass, ok := r.BasicAuth()
 
+			if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
+				w.Header().Set("WWW-Authenticate", `Basic realm="`+REALM+`"`)
+				w.WriteHeader(401)
+				w.Write([]byte("Unauthorised.\n"))
+
+				return
+			}
+		}
 		if lm.conf.API.Captcha.Enabled {
 			_, err = r.Cookie(sessionChal)
 			if err != nil {
 				isValid := lm.captcha.Verify(r.FormValue("g-recaptcha-response"))
 				if !isValid {
+
+					// check if the challenges are secret if so,
+					// request a password to be used for the challenge.
+
 					formActionURL := fmt.Sprintf("/api/?%s=%s", requestedChallenges, r.URL.Query().Get(requestedChallenges))
 
 					w.WriteHeader(http.StatusBadRequest)
 					w.Header().Set("Content-Type", "text/html; charset=utf-8")
 					_, _ = w.Write([]byte(getCaptchaPage(formActionURL, lm.conf.API.Captcha.SiteKey)))
+
 					return
 				}
 				authC := http.Cookie{Name: sessionChal, Value: r.FormValue("g-recaptcha-response"), Path: "/", MaxAge: 200}
@@ -116,6 +148,24 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler) http.HandlerFunc
 		}
 
 		next.ServeHTTP(w, r)
+	}
+}
+
+func (lm *LearningMaterialAPI) BasicAuth(handler http.HandlerFunc, username, password, realm string) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		user, pass, ok := r.BasicAuth()
+
+		if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
+			w.Header().Set("WWW-Authenticate", `Basic realm="`+realm+`"`)
+			w.WriteHeader(401)
+			w.Write([]byte("Unauthorised.\n"))
+
+			return
+		}
+
+		handler(w, r)
 	}
 }
 
