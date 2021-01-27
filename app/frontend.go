@@ -72,8 +72,11 @@ func (lm *LearningMaterialAPI) handleFrontendChallengesRequest() http.HandlerFun
 			})
 		}
 
-		//loop throw the exercises
+		//loop through the exercises
 		for _, exercise := range lm.exStore.ListExercises() {
+			if exercise.Secret {
+				continue
+			}
 			chal := Challenge{
 				Name: exercise.Name,
 				Tag:  string(exercise.Tags[0]),

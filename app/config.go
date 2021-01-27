@@ -17,11 +17,12 @@ type Config struct {
 		Secure   uint `yaml:"secure,omitempty"`
 		InSecure uint `yaml:"insecure,omitempty"`
 	} `yaml:"port"`
-	TLS                CertificateConfig                `yaml:"tls,omitempty"`
-	ExercisesFile      string                           `yaml:"exercises-file,omitempty"`
-	OvaDir             string                           `yaml:"ova-dir"`
-	API                APIConfig                        `yaml:"api"`
-	DockerRepositories []dockerclient.AuthConfiguration `yaml:"docker-repositories,omitempty"`
+	TLS                 CertificateConfig                `yaml:"tls,omitempty"`
+	ExercisesFile       string                           `yaml:"exercises-file,omitempty"`
+	OvaDir              string                           `yaml:"ova-dir"`
+	API                 APIConfig                        `yaml:"api"`
+	SecretChallengeAuth Auth                             `yaml:"api-creds"`
+	DockerRepositories  []dockerclient.AuthConfiguration `yaml:"docker-repositories,omitempty"`
 }
 
 type CertificateConfig struct {
@@ -31,12 +32,14 @@ type CertificateConfig struct {
 	CAFile   string `yaml:"cafile"`
 }
 
+type Auth struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
 type APIConfig struct {
 	SignKey string `yaml:"sign-key"`
-	Admin   struct {
-		Username string `yaml:"username"`
-		Password string `yaml:"password"`
-	} `yaml:"admin"`
+	Admin   Auth   `yaml:"admin"`
 	Captcha struct {
 		Enabled   bool   `yaml:"enabled"`
 		SiteKey   string `yaml:"site-key"`
