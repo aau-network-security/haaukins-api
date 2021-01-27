@@ -82,7 +82,17 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 
 		challenges, err := lm.GetChallengesFromRequest(r.URL.Query().Get(requestedChallenges))
 
+		if err != nil {
+			errorPage(w, r, http.StatusBadRequest, returnError{
+				Content:         errorChallengesTag,
+				Toomanyrequests: false,
+			})
+			return
+		}
+
 		exercises, err := lm.exStore.GetExercisesByTags(challenges...)
+
+		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
 			errorPage(w, r, http.StatusBadRequest, returnError{
 				Content:         err.Error(),
@@ -90,19 +100,12 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 			})
 			return
 		}
+
 		for _, e := range exercises {
 			if e.Secret {
 				enableBasicAuth = e.Secret
 				continue
 			}
-		}
-		//Bad request (challenge tags don't exist, or bad request)
-		if err != nil {
-			errorPage(w, r, http.StatusBadRequest, returnError{
-				Content:         errorChallengesTag,
-				Toomanyrequests: false,
-			})
-			return
 		}
 
 		//Check if the API can handle another request
