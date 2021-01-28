@@ -69,9 +69,8 @@ func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 
 //Checks if the requested challenges exists and if the API can handle one more request
 func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, password string) http.HandlerFunc {
-	var enableBasicAuth bool
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		var enableBasicAuth bool
 		if r.URL.Path != "/api/" {
 			notFoundPage(w, r)
 			return
@@ -149,7 +148,6 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 				http.SetCookie(w, &authC)
 			}
 		}
-
 		next.ServeHTTP(w, r)
 	}
 }
