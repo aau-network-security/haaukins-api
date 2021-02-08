@@ -128,25 +128,23 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 			}
 		}
 		if lm.conf.API.Captcha.Enabled {
-			_, err = r.Cookie(sessionChal)
-			if err != nil {
-				isValid := lm.captcha.Verify(r.FormValue("g-recaptcha-response"))
-				if !isValid {
+			isValid := lm.captcha.Verify(r.FormValue("g-recaptcha-response"))
+			if !isValid {
 
-					// check if the challenges are secret if so,
-					// request a password to be used for the challenge.
+				// check if the challenges are secret if so,
+				// request a password to be used for the challenge.
 
-					formActionURL := fmt.Sprintf("/api/?%s=%s", requestedChallenges, r.URL.Query().Get(requestedChallenges))
+				formActionURL := fmt.Sprintf("/api/?%s=%s", requestedChallenges, r.URL.Query().Get(requestedChallenges))
 
-					w.WriteHeader(http.StatusBadRequest)
-					w.Header().Set("Content-Type", "text/html; charset=utf-8")
-					_, _ = w.Write([]byte(getCaptchaPage(formActionURL, lm.conf.API.Captcha.SiteKey)))
+				w.WriteHeader(http.StatusBadRequest)
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				_, _ = w.Write([]byte(getCaptchaPage(formActionURL, lm.conf.API.Captcha.SiteKey)))
 
-					return
-				}
-				authC := http.Cookie{Name: sessionChal, Value: r.FormValue("g-recaptcha-response"), Path: "/", MaxAge: 200}
-				http.SetCookie(w, &authC)
+				return
 			}
+			authC := http.Cookie{Name: sessionChal, Value: r.FormValue("g-recaptcha-response"), Path: "/", MaxAge: 200}
+			http.SetCookie(w, &authC)
+
 		}
 		next.ServeHTTP(w, r)
 	}
