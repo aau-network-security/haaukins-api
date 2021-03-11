@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"io/ioutil"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -22,6 +23,7 @@ type Config struct {
 	OvaDir              string                           `yaml:"ova-dir"`
 	API                 APIConfig                        `yaml:"api"`
 	SecretChallengeAuth Auth                             `yaml:"api-creds"`
+	LabTTL              time.Duration                    `yaml:"lab-ttl"`
 	DockerRepositories  []dockerclient.AuthConfiguration `yaml:"docker-repositories,omitempty"`
 }
 
