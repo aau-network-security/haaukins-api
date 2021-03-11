@@ -7,10 +7,10 @@
         </p>
         <div class="row justify-content-md-center mt-3 text-center">
             <div class="col-12 col-md-4">
-                <p><strong>Client Max Request: </strong><span class="aau-color">4</span></p>
+                <p><strong>Client Max Request: </strong><span class="aau-color">{{ .ClientMaxRequest }}</span></p>
             </div>
             <div class="col-12 col-md-4">
-                <p><strong>Environment Timeout**: </strong><span class="aau-color">45 min.</span></p>
+                <p><strong>Environment Timeout**: </strong><span class="aau-color">{{ .EnvTTL }}</span></p>
             </div>
         </div>
         <form class="mt-4">

@@ -54,7 +54,7 @@ func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environme
 		log.Error().Msgf("Error while starting lab %s", err.Error())
 		return nil, err
 	}
-	environmentTimer := lm.conf.LabTTL * time.Minute
+	environmentTimer := lm.conf.API.LabTTL * time.Minute
 
 	env := &environment{
 		timer:      time.NewTimer(environmentTimer),

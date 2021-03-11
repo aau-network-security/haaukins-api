@@ -23,7 +23,6 @@ type Config struct {
 	OvaDir              string                           `yaml:"ova-dir"`
 	API                 APIConfig                        `yaml:"api"`
 	SecretChallengeAuth Auth                             `yaml:"api-creds"`
-	LabTTL              time.Duration                    `yaml:"lab-ttl"`
 	DockerRepositories  []dockerclient.AuthConfiguration `yaml:"docker-repositories,omitempty"`
 }
 
@@ -47,8 +46,9 @@ type APIConfig struct {
 		SiteKey   string `yaml:"site-key"`
 		SecretKey string `yaml:"secret-key"`
 	} `yaml:"captcha"`
-	TotalMaxRequest  int `yaml:"total-max-requests"`
-	ClientMaxRequest int `yaml:"client-max-requests"`
+	TotalMaxRequest  int           `yaml:"total-max-requests"`
+	ClientMaxRequest int           `yaml:"client-max-requests"`
+	LabTTL           time.Duration `yaml:"lab-ttl"`
 	FrontEnd         struct {
 		Image  string `yaml:"image"`
 		Memory uint   `yaml:"memory"`

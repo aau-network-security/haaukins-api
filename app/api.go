@@ -45,6 +45,11 @@ func (lm *LearningMaterialAPI) Handler() http.Handler {
 	return m
 }
 
+type Siteinfo struct {
+	ClientMaxRequest int
+	EnvTTL           int
+}
+
 func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 	tmpl, err := template.ParseFiles(
 		"resources/private/base.tmpl.html",
@@ -59,8 +64,12 @@ func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 			notFoundPage(w, r)
 			return
 		}
+		data := Siteinfo{
+			ClientMaxRequest: lm.conf.API.ClientMaxRequest,
+			EnvTTL:           int(lm.conf.API.LabTTL),
+		}
 
-		if err := tmpl.Execute(w, nil); err != nil {
+		if err := tmpl.Execute(w, data); err != nil {
 			http.NotFound(w, r)
 			log.Error().Msgf("template err index:: %s", err.Error())
 		}
