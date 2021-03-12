@@ -1,19 +1,13 @@
 {{ define "content" }}
-    <div class="container custom-margin-top px-lg-5">
-        <div class="row mt-5">
-            <div class="col-md-12 text-center">
-                {{ if .Toomanyrequests}}
-                    <img src="/assets/img/requests.svg" class="img-fluid" width="700" height="700">
-                {{ else }}
-                    <img src="/assets/img/error.svg" class="img-fluid" width="700" height="700">
-                {{ end }}
-                <h3 class="text-center mt-3">Oops... Something went wrong!</h3>
-                <p class="error-page-color">{{ .Content }}</p>
-                {{ if not .Toomanyrequests}}
-                    <p class="error-page-color">Please contact <a class="color-sec-aau" href="https://www.cybertraining.dk/haaukinsteam/"> Haaukins maintainers </a> if error occurs again</p>
-                {{ end }}
-                <a href="/" class="btn btn-haaukins mt-3">Try Again Later</a>
-            </div>
+<div class="container custom-margin-top px-lg-5">
+    <div class="row mt-5">
+        <div class="col-md-12 text-center">
+            <h3 class="text-center mt-3" style="font-weight: bold; font-size: 35px">Oops... Something went wrong!</h3>
+            <p class="text-center error-page-color" style="font-weight: bold; font-size: 25px">{{ .Content }}</p>
+            <a href="/" class="btn btn-haaukins mt-3">Try Again Later</a><br><br>
+            <p class="error-page-color" style="font-weight: bold; font-size: 18px">Please contact with  <a class="color-sec-aau" href="mailto:support@cybermesterskaberne.dk"> support </a> if error occurs continuously. </p>
+
         </div>
     </div>
+</div>
 {{ end }}

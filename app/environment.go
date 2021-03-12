@@ -14,8 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const environmentTimer = 45 * time.Minute
-
 type environment struct {
 	timer      *time.Timer
 	challenges []store.Tag
@@ -56,6 +54,7 @@ func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environme
 		log.Error().Msgf("Error while starting lab %s", err.Error())
 		return nil, err
 	}
+	environmentTimer := lm.conf.API.LabTTL * time.Minute
 
 	env := &environment{
 		timer:      time.NewTimer(environmentTimer),

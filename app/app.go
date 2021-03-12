@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aau-network-security/haaukins/svcs/guacamole"
 
@@ -56,6 +57,9 @@ func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 			return nil, err
 		}
 	}
+	if conf.API.LabTTL == 0 {
+		conf.API.LabTTL = time.Duration(45) // default TTL for a lab is 45 Minutes
+	}
 
 	return &LearningMaterialAPI{
 		conf:               conf,
@@ -72,15 +76,9 @@ func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 
 func (lm *LearningMaterialAPI) Run() {
 	log.Info().Msg("API ready to get requests")
-	if lm.conf.TLS.Enabled {
-		log.Info().Msgf("API running in SECURE mode under port: %d", lm.conf.Port.Secure)
-		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", lm.conf.Port.Secure), lm.conf.TLS.CertFile, lm.conf.TLS.CertKey, lm.Handler()); err != nil {
-			log.Warn().Msgf("Serving error: %s", err)
-		}
-		return
-	}
+	// Reverse proxy handles certification and other stuff
 	log.Info().Msgf("API running under port: %d", lm.conf.Port.InSecure)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", lm.conf.Port.InSecure), lm.Handler()); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", lm.conf.Port.InSecure), lm.Handler()); err != nil {
 		log.Warn().Msgf("Serving error: %s", err)
 	}
 }

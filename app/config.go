@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"io/ioutil"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -45,8 +46,9 @@ type APIConfig struct {
 		SiteKey   string `yaml:"site-key"`
 		SecretKey string `yaml:"secret-key"`
 	} `yaml:"captcha"`
-	TotalMaxRequest  int `yaml:"total-max-requests"`
-	ClientMaxRequest int `yaml:"client-max-requests"`
+	TotalMaxRequest  int           `yaml:"total-max-requests"`
+	ClientMaxRequest int           `yaml:"client-max-requests"`
+	LabTTL           time.Duration `yaml:"lab-ttl"`
 	FrontEnd         struct {
 		Image  string `yaml:"image"`
 		Memory uint   `yaml:"memory"`
