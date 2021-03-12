@@ -18,15 +18,15 @@ const (
 	sessionChal         = "chals"
 	timeFormat          = "2006-01-02 15:04:05"
 
-	errorChallengesTag = "Challenges Tag not found"
-	errorCreateToken   = "Error creating session token"
-	errorGetToken      = "Error getting session token"
-	errorGetClient     = "Error getting client"
-	errorCreateEnv     = "Error creating the environment"
-	errorGetCR         = "Error getting the environment"
+	challengesTagErr = "Challenges Tag not found"
+	createTokenErr   = "Error creating session token"
+	getTokenErr      = "Error getting session token"
+	getClientErr     = "ERR: Clean your cache and try on private tabs."
+	createEnvErr     = "ERR: Env could be created; Docker or VM could not initialized correctly, report to administrators"
+	getCRErr         = "Error getting the environment"
 
-	errorAPIRequests    = "API reached the maximum number of requests it can handles"
-	errorClientRequests = "You reached the maximum number of requests you can make"
+	limitHitAPIErr       = "API reached the maximum number of requests it can handles"
+	maxClientLimitHitErr = "You reached the maximum number of requests you can make !"
 
 	REALM = "Enter password to use secret challenge"
 )
@@ -92,7 +92,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 
 		if err != nil {
 			errorPage(w, r, http.StatusBadRequest, returnError{
-				Content:         errorChallengesTag,
+				Content:         fmt.Sprintf("%s \n %s", challengesTagErr, err.Error()),
 				Toomanyrequests: false,
 			})
 			return
@@ -120,7 +120,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 		if len(lm.ClientRequestStore.GetAllRequests()) > lm.conf.API.TotalMaxRequest {
 			log.Info().Msg("API reached the maximum number of requests it can handles")
 			errorPage(w, r, http.StatusServiceUnavailable, returnError{
-				Content:         errorAPIRequests,
+				Content:         limitHitAPIErr,
 				Toomanyrequests: true,
 			})
 			return
@@ -196,7 +196,7 @@ func (lm *LearningMaterialAPI) getOrCreateClient(next http.Handler) http.Handler
 			if err != nil {
 				log.Error().Msgf("Error creating session token: %v", err)
 				errorPage(w, r, http.StatusInternalServerError, returnError{
-					Content:         errorCreateToken,
+					Content:         createTokenErr,
 					Toomanyrequests: false,
 				})
 				return
@@ -226,7 +226,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		if err != nil { //Error getting the client ID from cookie
 			log.Error().Msgf("Error getting session token: %v", err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetToken,
+				Content:         getTokenErr,
 				Toomanyrequests: false,
 			})
 			return
@@ -235,7 +235,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		if err != nil { //Error getting Client
 			log.Error().Msgf("Error getting client [%s]: %v", clientID, err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetClient,
+				Content:         getClientErr,
 				Toomanyrequests: false,
 			})
 			return
@@ -247,7 +247,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 			if client.RequestMade() >= lm.conf.API.ClientMaxRequest {
 				log.Debug().Msgf("Client [%s] has reached max number of requests", clientID)
 				errorPage(w, r, http.StatusTooManyRequests, returnError{
-					Content:         errorClientRequests,
+					Content:         maxClientLimitHitErr,
 					Toomanyrequests: true,
 				})
 				return
@@ -262,7 +262,7 @@ func (lm *LearningMaterialAPI) getOrCreateEnvironment() http.HandlerFunc {
 		case err = <-cr.err:
 			log.Error().Msgf("Error while creating the environment: %v", err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorCreateEnv,
+				Content:         createEnvErr,
 				Toomanyrequests: false,
 			})
 			fw := csv.NewWriter(lm.storeFile)

@@ -42,7 +42,7 @@ func (lm *LearningMaterialAPI) guacLogin() http.HandlerFunc {
 		if err != nil { //Error getting the client ID from cookie
 			log.Error().Msgf("Error getting session token: %v", err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetToken,
+				Content:         fmt.Sprintf("%s \n  %s", getTokenErr, err.Error()),
 				Toomanyrequests: false,
 			})
 			return
@@ -52,7 +52,7 @@ func (lm *LearningMaterialAPI) guacLogin() http.HandlerFunc {
 		if err != nil { //Error getting Client
 			log.Error().Msgf("Proxy Error getting client [%s]: %v", clientID, err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetClient,
+				Content:         fmt.Sprintf("%s \n  %s", getClientErr, err.Error()),
 				Toomanyrequests: false,
 			})
 			return
@@ -62,7 +62,7 @@ func (lm *LearningMaterialAPI) guacLogin() http.HandlerFunc {
 		if err != nil {
 			log.Error().Msgf("Proxy Error getting client request [%s]: %v", rChallenges, err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetCR,
+				Content:         fmt.Sprintf("%s \n %s", getCRErr, err.Error()),
 				Toomanyrequests: false,
 			})
 			return
@@ -72,7 +72,7 @@ func (lm *LearningMaterialAPI) guacLogin() http.HandlerFunc {
 		if err != nil {
 			log.Error().Msgf("Unable to login guacamole [%s]: %v", cr.ID(), err)
 			errorPage(w, r, http.StatusInternalServerError, returnError{
-				Content:         errorGetCR,
+				Content:         fmt.Sprintf("%s \n  %s", getCRErr, err.Error()),
 				Toomanyrequests: false,
 			})
 			return
