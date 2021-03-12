@@ -25,7 +25,7 @@ const (
 	createEnvErr     = "ERR: Env could be created; Docker or VM could not initialized correctly, report to administrators"
 	getCRErr         = "Error getting the environment"
 
-	limitHitAPIErr       = "API reached the maximum number of requests it can handles"
+	limitHitAPIErr       = "API reached the maximum number of requests it can handles.\nYou can use the alternative link given in the challenge description."
 	maxClientLimitHitErr = "You reached the maximum number of requests you can make !"
 
 	REALM = "Enter password to use secret challenge"
