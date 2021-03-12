@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aau-network-security/haaukins/svcs/guacamole"
 
@@ -57,7 +58,7 @@ func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 		}
 	}
 	if conf.API.LabTTL == 0 {
-		conf.API.LabTTL = 45 // default TTL for a lab is 45 Minutes
+		conf.API.LabTTL = time.Duration(45) // default TTL for a lab is 45 Minutes
 	}
 
 	return &LearningMaterialAPI{
