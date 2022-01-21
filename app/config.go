@@ -33,6 +33,7 @@ type CertificateConfig struct {
 }
 
 type Auth struct {
+	EnableSecretAuth bool `yaml:"enable-secret-auth"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 }

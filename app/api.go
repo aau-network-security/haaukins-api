@@ -34,7 +34,7 @@ const (
 func (lm *LearningMaterialAPI) Handler() http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("/", lm.handleIndex())
-	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment()), lm.conf.SecretChallengeAuth.Username, lm.conf.SecretChallengeAuth.Password))
+	m.HandleFunc("/api/", lm.handleRequest(lm.getOrCreateClient(lm.getOrCreateEnvironment()), lm.conf.SecretChallengeAuth.Username, lm.conf.SecretChallengeAuth.Password, lm.conf.SecretChallengeAuth.EnableSecretAuth))
 	m.HandleFunc("/admin/envs/", lm.listEnvs())
 	m.HandleFunc("/guaclogin/", lm.guacLogin())
 	m.HandleFunc("/guacamole/", lm.proxyHandler())
@@ -68,7 +68,7 @@ func (lm *LearningMaterialAPI) handleIndex() http.HandlerFunc {
 }
 
 //Checks if the requested challenges exists and if the API can handle one more request
-func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, password string) http.HandlerFunc {
+func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, password string, enableSecretAuth bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var enableBasicAuth bool
 		if r.URL.Path != "/api/" {
@@ -116,7 +116,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 			})
 			return
 		}
-		if enableBasicAuth {
+		if enableBasicAuth && enableSecretAuth {
 			user, pass, ok := r.BasicAuth()
 
 			if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
