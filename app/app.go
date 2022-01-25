@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	proto "github.com/aau-network-security/haaukins/exercise/ex-proto"
 	"io"
 	"net/http"
 	"os"
@@ -19,7 +20,7 @@ type LearningMaterialAPI struct {
 	conf *Config
 	ClientRequestStore
 	captcha   Recaptcha
-	exStore   store.ExerciseStore
+	exClient  proto.ExerciseStoreClient
 	vlib      vbox.Library
 	frontend  []store.InstanceConfig
 	storeFile *os.File
@@ -34,10 +35,22 @@ func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 		Image:    conf.API.FrontEnd.Image,
 		MemoryMB: conf.API.FrontEnd.Memory,
 	}}
-	ef, err := store.NewExerciseFile(conf.ExercisesFile)
-	if err != nil {
-		return nil, err
+
+	exServiceConfig := store.ServiceConfig{
+		Grpc:     conf.ExerciseService.Grpc,
+		AuthKey:  conf.ExerciseService.AuthKey,
+		SignKey:  conf.ExerciseService.SignKey,
+		Enabled:  conf.ExerciseService.CertConfig.Enabled,
+		CertFile: conf.ExerciseService.CertConfig.CertFile,
+		CertKey:  conf.ExerciseService.CertConfig.CertKey,
+		CAFile:   conf.ExerciseService.CertConfig.CAFile,
 	}
+
+	exServiceClient, err := store.NewExerciseClientConn(exServiceConfig)
+	if err != nil {
+		return nil, fmt.Errorf("[Exercise Service] Error creating gRPC connection to exercise service: %v", err)
+	}
+
 	crs := NewClientRequestStore()
 
 	sf, err := os.OpenFile(conf.API.StoreFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -45,7 +58,7 @@ func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 	var guac guacamole.Guacamole
 	if !isTest {
 		ctx := context.Background()
-		guac, err = guacamole.New(ctx, guacamole.Config{})
+		guac, err = guacamole.New(ctx, guacamole.Config{}, 0)
 		if err != nil {
 			log.Error().Msgf("Error while creating new guacamole %s", err.Error())
 			return nil, err
@@ -61,7 +74,7 @@ func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 		conf:               conf,
 		ClientRequestStore: crs,
 		captcha:            NewRecaptcha(conf.API.Captcha.SecretKey),
-		exStore:            ef,
+		exClient:           exServiceClient,
 		vlib:               vlib,
 		frontend:           frontends,
 		storeFile:          sf,

@@ -49,7 +49,7 @@ func (lm *LearningMaterialAPI) GetChallengesFromRequest(requestedChallenges stri
 	tags := make([]store.Tag, len(challenges))
 	for i, s := range challenges {
 		t := store.Tag(s)
-		_, tagErr := lm.exStore.GetExercisesByTags(t)
+		_, tagErr := lm.exClient.GetExerciseByTags()
 		if tagErr != nil {
 			return nil, tagErr
 		}
