@@ -50,6 +50,7 @@ func New(conf *Config, isTest bool) (*LearningMaterialAPI, error) {
 	if err != nil {
 		return nil, fmt.Errorf("[Exercise Service] Error creating gRPC connection to exercise service: %v", err)
 	}
+	log.Info().Msg("Connected to exersice service!!")
 
 	crs := NewClientRequestStore()
 

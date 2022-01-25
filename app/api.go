@@ -1,10 +1,12 @@
 package app
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	proto "github.com/aau-network-security/haaukins/exercise/ex-proto"
 	"net/http"
 	"text/template"
 	"time"
@@ -79,8 +81,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 		// No need to sanitize the url requested
 		//https://stackoverflow.com/questions/23285364/does-go-sanitize-urls-for-web-requests
 
-		challenges, err := lm.GetChallengesFromRequest(r.URL.Query().Get(requestedChallenges))
-
+		_, challenges, err := lm.GetChallengesFromRequest(r.URL.Query().Get(requestedChallenges))
 		if err != nil {
 			errorPage(w, r, http.StatusBadRequest, returnError{
 				Content:         errorChallengesTag,
@@ -88,8 +89,8 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 			})
 			return
 		}
-
-		exercises, err := lm.exStore.GetExercisesByTags(challenges...)
+		ctx := context.TODO()
+		response, err := lm.exClient.GetExerciseByTags(ctx, &proto.GetExerciseByTagsRequest{Tag: challenges})
 
 		//Bad request (challenge tags don't exist, or bad request)
 		if err != nil {
@@ -100,7 +101,7 @@ func (lm *LearningMaterialAPI) handleRequest(next http.Handler, username, passwo
 			return
 		}
 
-		for _, e := range exercises {
+		for _, e := range response.Exercises {
 			if e.Secret {
 				enableBasicAuth = e.Secret
 				continue
@@ -286,9 +287,9 @@ func (lm *LearningMaterialAPI) CreateEnvironment(client Client, chals string) {
 
 	cr := client.NewClientRequest(chals)
 
-	chalsTag, _ := lm.GetChallengesFromRequest(chals)
+	chalsTag, sChalTags, _ := lm.GetChallengesFromRequest(chals)
 
-	env, err := lm.NewEnvironment(chalsTag)
+	env, err := lm.NewEnvironment(chalsTag, sChalTags)
 	if err != nil {
 		go cr.NewError(err)
 		return
