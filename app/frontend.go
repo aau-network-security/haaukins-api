@@ -100,28 +100,24 @@ func (lm *LearningMaterialAPI) handleFrontendChallengesRequest() http.HandlerFun
 				Name: e.Name,
 				Tag:  e.Tag,
 			}
-			childTags := eStruct.ChildTags()
-			//if an exercise contains more challenges, write them in the exercise name
 
-			if len(childTags) > 1 {
-				chal.Name += " ("
-				for _, f := range childTags {
-					chal.Name += f + ", "
-				}
-				chal.Name = strings.TrimRight(chal.Name, ", ") + ")"
-			}
-			//log.Println("chalCatTag: %v", childTags)
 			var category string
 			for _, i := range eStruct.Instance {
 				if len(i.Flags) != 0 {
 					category = i.Flags[0].Category
+					if len(i.Flags) > 1 {
+						chal.Name += " ("
+						for _, f := range i.Flags {
+							chal.Name += f.Name + ", "
+						}
+						chal.Name = strings.TrimRight(chal.Name, ", ") + ")"
+					}
 				}
 			}
 
 
 			for i, rc := range categories {
 				if rc.Name == category{
-					log.Println(fmt.Sprintf("Category of challenge: %s matches %s", category, rc))
 					categories[i].Challenges = append(categories[i].Challenges, chal)
 				}
 			}
