@@ -223,6 +223,11 @@ main{
     color: #555;
 }
 
+.text-container{
+    position: relative;
+    top: 20%;
+}
+
 @media screen and (max-width: 992px){
     .haaukins-logo{
         max-width: 150px;
@@ -235,6 +240,9 @@ main{
     }
     .brand-powered{
         font-size: 0.8rem;
+    }
+    .text-container{
+        top: 0;
     }
 }
 
@@ -258,3 +266,4 @@ main{
         margin-top: 380px;
     }
 }
+
