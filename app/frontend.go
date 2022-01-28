@@ -1,7 +1,11 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	proto "github.com/aau-network-security/haaukins/exercise/ex-proto"
+	"github.com/aau-network-security/haaukins/store"
 	"log"
 	"net/http"
 	"strings"
@@ -63,37 +67,57 @@ func (lm *LearningMaterialAPI) handleFrontendChallengesRequest() http.HandlerFun
 		var categories []Category
 
 		//Get che Categories
-		for _, c := range lm.getChallengeCategories() {
-			tag := strings.Join(strings.Fields(c), "")
+		cats, err := lm.getChallengeCategories()
+		if err != nil {
+			log.Println(err)
+		}
+		for _, c := range cats {
 			categories = append(categories, Category{
-				Name:       c,
-				Tag:        strings.ToLower(tag),
+				Name:       c.Name,
+				Tag:        strings.ToLower(string(c.Tag)),
 				Challenges: []Challenge{},
 			})
 		}
 
 		//loop through the exercises
-		for _, exercise := range lm.exStore.ListExercises() {
-			if exercise.Secret {
+		ctx := context.TODO()
+		response, err := lm.exClient.GetExercises(ctx, &proto.Empty{})
+		if err != nil {
+			log.Println(fmt.Errorf("[exercise-service] Error getting exercises: %v", err))
+		}
+
+		for _, e := range response.Exercises {
+			if e.Secret {
 				continue
 			}
+			exercise, err := protobufToJson(e)
+			if err != nil {
+				log.Println("Error converting protobuffer to JSON: %v", err)
+			}
+			eStruct := store.Exercise{}
+			json.Unmarshal([]byte(exercise), &eStruct)
 			chal := Challenge{
-				Name: exercise.Name,
-				Tag:  string(exercise.Tags[0]),
+				Name: e.Name,
+				Tag:  e.Tag,
 			}
 
-			//if an exercise contains more challenges, write them in the exercise name
-			flags := exercise.Flags()
-			if len(flags) > 1 {
-				chal.Name += " ("
-				for _, f := range flags {
-					chal.Name += f.Name + ", "
+			var category string
+			for _, i := range eStruct.Instance {
+				if len(i.Flags) != 0 {
+					category = i.Flags[0].Category
+					if len(i.Flags) > 1 {
+						chal.Name += " ("
+						for _, f := range i.Flags {
+							chal.Name += f.Name + ", "
+						}
+						chal.Name = strings.TrimRight(chal.Name, ", ") + ")"
+					}
 				}
-				chal.Name = strings.TrimRight(chal.Name, ", ") + ")"
 			}
+
 
 			for i, rc := range categories {
-				if rc.Name == flags[0].Category {
+				if rc.Name == category{
 					categories[i].Challenges = append(categories[i].Challenges, chal)
 				}
 			}
@@ -155,16 +179,21 @@ func (c *FrontendClient) writePump() {
 }
 
 //Get challenges categories
-func (lm *LearningMaterialAPI) getChallengeCategories() []string {
-	keys := make(map[string]bool)
-	challengeCats := []string{}
-	for _, challenge := range lm.exStore.ListExercises() {
-		for _, f := range challenge.Flags() {
-			if _, value := keys[f.Category]; !value {
-				keys[f.Category] = true
-				challengeCats = append(challengeCats, f.Category)
-			}
-		}
+func (lm *LearningMaterialAPI) getChallengeCategories() ([]store.Category, error) {
+	challengeCats := []store.Category{}
+	ctx := context.TODO()
+	response, err := lm.exClient.GetCategories(ctx, &proto.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("[exercise-service] Error getting categories")
 	}
-	return challengeCats
+	for _, c := range response.Categories {
+		category, err := protobufToJson(c)
+		if err != nil {
+			return nil, err
+		}
+		catStruct := store.Category{}
+		json.Unmarshal([]byte(category), &catStruct)
+		challengeCats = append(challengeCats, catStruct)
+	}
+	return challengeCats, nil
 }

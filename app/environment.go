@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	proto "github.com/aau-network-security/haaukins/exercise/ex-proto"
 	"strings"
 	"time"
 
@@ -31,13 +33,26 @@ type Environment interface {
 }
 
 //Create a new environment (Haaukins Lab)
-func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environment, error) {
+func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag, sChallenges [] string) (Environment, error) {
 
-	ctx := context.Background()
-	exercises, _ := lm.exStore.GetExercisesByTags(challenges...)
+	var exers []store.Exercise
 
+	ctx := context.TODO()
+	response, _ := lm.exClient.GetExerciseByTags(ctx, &proto.GetExerciseByTagsRequest{Tag: sChallenges})
+
+	for _, e := range response.Exercises {
+		exercise, err := protobufToJson(e)
+		if err != nil {
+			return nil, err
+		}
+		estruct := store.Exercise{}
+		json.Unmarshal([]byte(exercise), &estruct)
+		exers = append(exers, estruct)
+	}
+
+	ctx = context.Background()
 	labConf := hlab.Config{
-		Exercises: exercises,
+		Exercises: exers,
 		Frontends: lm.frontend,
 	}
 
@@ -46,7 +61,7 @@ func (lm *LearningMaterialAPI) NewEnvironment(challenges []store.Tag) (Environme
 		Conf: labConf,
 	}
 
-	lab, err := lh.NewLab(ctx)
+	lab, err := lh.NewLab(ctx, 0)
 	if err != nil {
 		log.Error().Msgf("Error while creating new lab %s", err.Error())
 		return nil, err

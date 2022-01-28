@@ -52,6 +52,7 @@ function receiveMsg(evt) {
 
 function showChallenges(frontendChallenges){
     const nav_pills = document.getElementById('challenges-category-nav')
+    const challenges_tab = document.getElementById('challenges-tab')
     let count = 0
     for ( let i = 0; i < frontendChallenges.length; i ++ ) {
         let category = document.createElement('a');
@@ -62,6 +63,15 @@ function showChallenges(frontendChallenges){
         category.classList.add('nav-link')
         i == 0 ? category.classList.add('active') : "" ;
         nav_pills.appendChild(category)
+
+        let cat_tab = document.createElement('div')
+        cat_tab.classList.add('tab-pane','fade')
+        i == 0 ? cat_tab.classList.add('active','show') : "";
+        cat_tab.setAttribute('id', frontendChallenges[i].tag)
+        cat_tab.setAttribute('role', 'tabpanel')
+        cat_tab.setAttribute('aria-labelledby', frontendChallenges[i].tag + '-tab')
+        challenges_tab.appendChild(cat_tab)
+
         for ( let j = 0; j < frontendChallenges[i].challenges.length; j ++ ){
             count++
             let challenge = frontendChallenges[i].challenges[j]

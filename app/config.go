@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/aau-network-security/haaukins/daemon"
 	"github.com/aau-network-security/haaukins/virtual/docker"
 	dockerclient "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v2"
@@ -17,8 +18,9 @@ type Config struct {
 		Secure   uint `yaml:"secure,omitempty"`
 		InSecure uint `yaml:"insecure,omitempty"`
 	} `yaml:"port"`
-	TLS                 CertificateConfig                `yaml:"tls,omitempty"`
-	ExercisesFile       string                           `yaml:"exercises-file,omitempty"`
+	TLS CertificateConfig `yaml:"tls,omitempty"`
+	//ExercisesFile       string                           `yaml:"exercises-file,omitempty"`
+	ExerciseService     daemon.ServiceConfig             `yaml:"exercise-service"`
 	OvaDir              string                           `yaml:"ova-dir"`
 	API                 APIConfig                        `yaml:"api"`
 	SecretChallengeAuth Auth                             `yaml:"api-creds"`
@@ -33,9 +35,9 @@ type CertificateConfig struct {
 }
 
 type Auth struct {
-	EnableSecretAuth bool `yaml:"enable-secret-auth"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	EnableSecretAuth bool   `yaml:"enable-secret-auth"`
+	Username         string `yaml:"username"`
+	Password         string `yaml:"password"`
 }
 
 type APIConfig struct {

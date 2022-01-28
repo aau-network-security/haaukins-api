@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
+	proto "github.com/aau-network-security/haaukins/exercise/ex-proto"
 	"io"
 	"net/http"
 	"strings"
@@ -16,6 +18,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 
 	"github.com/aau-network-security/haaukins/store"
+	"github.com/golang/protobuf/jsonpb"
+	bproto "github.com/golang/protobuf/proto"
 )
 
 //Gracefully shut down function
@@ -43,19 +47,20 @@ func (lm *LearningMaterialAPI) Close() error {
 }
 
 //Get the challenges from the store (haaukins), return error if the challenges tag dosen't exist
-func (lm *LearningMaterialAPI) GetChallengesFromRequest(requestedChallenges string) ([]store.Tag, error) {
+func (lm *LearningMaterialAPI) GetChallengesFromRequest(requestedChallenges string) ([]store.Tag, []string, error) {
 
 	challenges := strings.Split(requestedChallenges, ",")
 	tags := make([]store.Tag, len(challenges))
+	ctx := context.TODO()
 	for i, s := range challenges {
 		t := store.Tag(s)
-		_, tagErr := lm.exStore.GetExercisesByTags(t)
+		_, tagErr := lm.exClient.GetExerciseByTags(ctx, &proto.GetExerciseByTagsRequest{Tag: []string{s}})
 		if tagErr != nil {
-			return nil, tagErr
+			return nil, nil, tagErr
 		}
 		tags[i] = t
 	}
-	return tags, nil
+	return tags, challenges, nil
 }
 
 //Create the token that will be used as a cookie
@@ -150,4 +155,14 @@ func WaitingResponse(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(waitingHTMLTemplate))
 	return
+}
+
+func protobufToJson(message bproto.Message) (string, error) {
+	marshaler := jsonpb.Marshaler{
+		EnumsAsInts:  false,
+		EmitDefaults: false,
+		Indent:       "  ",
+	}
+
+	return marshaler.MarshalToString(message)
 }
