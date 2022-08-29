@@ -3,7 +3,7 @@ module github.com/aau-network-security/haaukins-api
 go 1.13
 
 require (
-	github.com/aau-network-security/haaukins v0.0.0-20220125113714-a435eeebf646
+	github.com/aau-network-security/haaukins v0.0.0-20220729180422-488893bf4fdc
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fsouza/go-dockerclient v1.6.5
 	github.com/golang/protobuf v1.5.2
